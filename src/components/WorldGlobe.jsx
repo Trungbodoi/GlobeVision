@@ -13,8 +13,7 @@ import { getCountryInfo } from "../services/countryApi";
 import CountryCard from "./CountryCard";
 
 
-function WorldGlobe() {
-  
+function WorldGlobe({ onProgress, onLoaded }) {  
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [loadingCountry, setLoadingCountry] = useState(false);
   const globeRef = useRef();
@@ -30,14 +29,17 @@ function WorldGlobe() {
 
     async function loadGlobe() {
       try {
+        if (onProgress) onProgress(10);
+
         const [countryResponse, boundaryResponse] = await Promise.all([
             fetch(`${import.meta.env.BASE_URL}custom.geojson`),
             fetch(`${import.meta.env.BASE_URL}boundary-lines.geojson`),
         ]);
+        if (onProgress) onProgress(30);
 
         const countries = await countryResponse.json();
         const boundaryData = await boundaryResponse.json();
-
+        if (onProgress) onProgress(45);
         console.log(
           "Tổng số features:",
           countries.features.length
@@ -80,7 +82,7 @@ console.log("==============================");
         );
 
         globe = Globe()(globeRef.current);
-
+        if (onProgress) onProgress(55);
         const scene = globe.scene();
 
         // Nền
@@ -112,7 +114,7 @@ console.log("==============================");
         graticuleGroup = createGraticule(scene, 100);
         ({ atmosphere, atmosMat } = createAtmosphere(scene, globe, 100));
         borders = createCountryBorders(scene, globe ,boundaryData);
-
+        if (onProgress) onProgress(70);
         // Globe.gl
         globe
           .showAtmosphere(false)
@@ -224,7 +226,7 @@ console.log("==============================");
             });
           })
           .polygonsData(validFeatures);
-
+          if (onProgress) onProgress(90);
         // Camera
         globe.pointOfView({
           lat: 20,
@@ -253,9 +255,22 @@ console.log("==============================");
             );
           }
         });
-      } catch (error) {
-        console.error("ERROR:", error);
-      }
+                if (onLoaded) {
+          requestAnimationFrame(() => {
+            onLoaded();
+          });
+        }
+        } catch (error) {
+          console.error("ERROR:", error);
+
+          if (onProgress) onProgress(100);
+
+          if (onLoaded) {
+            setTimeout(() => {
+              onLoaded();
+            }, 300);
+          }
+        }
     }
 
     loadGlobe();
