@@ -1,10 +1,21 @@
-import { useState } from "react";
+import { useEffect,useState } from "react";
 import WorldGlobe from "./components/WorldGlobe";
 import LoadingScreen from "./components/LoadingScreen";
 
 function App() {
 const [progress, setProgress] = useState(0);
 const [loading, setLoading] = useState(true);
+
+useEffect(() => {
+// Xóa loader nằm trong index.html
+// ngay khi React đã khởi động.
+const initialLoader = document.getElementById("initial-loader");
+
+if (initialLoader) {
+  initialLoader.remove();
+}
+
+}, []);
 
 const handleProgress = (value) => {
 setProgress(value);
