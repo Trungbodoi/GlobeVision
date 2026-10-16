@@ -1,0 +1,146 @@
+// Toàn bộ chuỗi giao diện. Thêm ngôn ngữ mới: thêm một khóa cùng cấu trúc.
+
+export const LANGUAGES = ["vi", "en"];
+export const DEFAULT_LANGUAGE = "vi";
+
+export const STRINGS = {
+  vi: {
+    "app.languageSwitch": "Chuyển sang tiếng Anh",
+    "app.loading": "Đang tải bản đồ thế giới...",
+
+    "search.label": "Tìm quốc gia",
+    "search.placeholder": "Tìm quốc gia (tên hoặc mã ISO)…",
+    "search.noResults": "Không tìm thấy quốc gia phù hợp",
+    "search.clear": "Xóa nội dung tìm kiếm",
+
+    "card.close": "Đóng",
+    "card.loading": "Đang tải thông tin…",
+    "card.noData": "Chưa có dữ liệu",
+    "card.flagAlt": "Quốc kỳ {name}",
+    "card.share": "Sao chép liên kết",
+    "card.shared": "Đã sao chép!",
+    "card.retry": "Thử lại",
+    "card.apiError": "Không tải được dữ liệu chi tiết. Đang hiển thị dữ liệu cơ bản từ bản đồ.",
+    "card.staleNotice": "Không kết nối được máy chủ. Đang hiển thị dữ liệu đã lưu ngày {date}.",
+    "card.noIso": "Vùng này không có mã ISO nên không có dữ liệu chi tiết.",
+    "card.disputed":
+      "Vùng có vị thế chính trị hoặc ranh giới đang tranh chấp. Thông tin hiển thị không thể hiện quan điểm về chủ quyền.",
+
+    "field.capital": "Thủ đô",
+    "field.population": "Dân số",
+    "field.populationEst": "Dân số ước tính ({year})",
+    "field.area": "Diện tích",
+    "field.continent": "Châu lục",
+    "field.region": "Khu vực",
+    "field.subregion": "Tiểu khu vực",
+    "field.currencies": "Tiền tệ",
+    "field.languages": "Ngôn ngữ",
+    "field.timezones": "Múi giờ",
+    "field.localTime": "Giờ địa phương",
+    "field.density": "Mật độ dân số",
+    "field.nativeName": "Tên bản địa",
+    "field.callingCode": "Mã điện thoại",
+    "field.neighbors": "Láng giềng",
+
+    "neighbors.none": "Không giáp biên giới đất liền với quốc gia nào",
+    "neighbors.goTo": "Xem {name}",
+
+    "time.atCapital": "tại {city}",
+
+    "unit.people": "người",
+    "unit.km2": "km²",
+    "unit.perKm2": "người/km²",
+
+    "footer.sources":
+      "Bản đồ: Natural Earth · Thông tin quốc gia: GeoNames (CC BY 4.0) qua countries.dev · Ranh giới hiển thị không thể hiện quan điểm về chủ quyền.",
+  },
+
+  en: {
+    "app.languageSwitch": "Switch to Vietnamese",
+    "app.loading": "Loading the world map...",
+
+    "search.label": "Search countries",
+    "search.placeholder": "Search a country (name or ISO code)…",
+    "search.noResults": "No matching country",
+    "search.clear": "Clear search",
+
+    "card.close": "Close",
+    "card.loading": "Loading…",
+    "card.noData": "No data",
+    "card.flagAlt": "Flag of {name}",
+    "card.share": "Copy link",
+    "card.shared": "Copied!",
+    "card.retry": "Retry",
+    "card.apiError": "Could not load detailed data. Showing basic map data instead.",
+    "card.staleNotice": "Server unreachable. Showing data saved on {date}.",
+    "card.noIso": "This area has no ISO code, so detailed data is unavailable.",
+    "card.disputed":
+      "This area has a disputed political status or borders. The information shown does not imply any position on sovereignty.",
+
+    "field.capital": "Capital",
+    "field.population": "Population",
+    "field.populationEst": "Est. population ({year})",
+    "field.area": "Area",
+    "field.continent": "Continent",
+    "field.region": "Region",
+    "field.subregion": "Subregion",
+    "field.currencies": "Currencies",
+    "field.languages": "Languages",
+    "field.timezones": "Time zones",
+    "field.localTime": "Local time",
+    "field.density": "Population density",
+    "field.nativeName": "Native name",
+    "field.callingCode": "Calling code",
+    "field.neighbors": "Neighbors",
+
+    "neighbors.none": "No land borders with other countries",
+    "neighbors.goTo": "Go to {name}",
+
+    "time.atCapital": "in {city}",
+
+    "unit.people": "people",
+    "unit.km2": "km²",
+    "unit.perKm2": "people/km²",
+
+    "footer.sources":
+      "Map: Natural Earth · Country data: GeoNames (CC BY 4.0) via countries.dev · Borders shown do not imply any position on sovereignty.",
+  },
+};
+
+// Tên châu lục, khu vực, tiểu khu vực (dữ liệu gốc bằng tiếng Anh).
+export const PLACE_NAMES_VI = {
+  Africa: "Châu Phi",
+  Americas: "Châu Mỹ",
+  Antarctica: "Châu Nam Cực",
+  Antarctic: "Châu Nam Cực",
+  Asia: "Châu Á",
+  Europe: "Châu Âu",
+  Oceania: "Châu Đại Dương",
+  Polar: "Vùng cực",
+  "North America": "Bắc Mỹ",
+  "South America": "Nam Mỹ",
+  "Seven seas (open ocean)": "Biển khơi",
+  "Central America": "Trung Mỹ",
+  Caribbean: "Caribe",
+  "Northern America": "Bắc Mỹ",
+  "South-Eastern Asia": "Đông Nam Á",
+  "Western Asia": "Tây Á",
+  "Southern Asia": "Nam Á",
+  "Eastern Asia": "Đông Á",
+  "Central Asia": "Trung Á",
+  "Eastern Africa": "Đông Phi",
+  "Northern Africa": "Bắc Phi",
+  "Middle Africa": "Trung Phi",
+  "Southern Africa": "Nam Phi",
+  "Western Africa": "Tây Phi",
+  "Western Europe": "Tây Âu",
+  "Eastern Europe": "Đông Âu",
+  "Northern Europe": "Bắc Âu",
+  "Southern Europe": "Nam Âu",
+  "Southeast Europe": "Đông Nam Âu",
+  "Central Europe": "Trung Âu",
+  Melanesia: "Melanesia",
+  "Australia and New Zealand": "Úc và New Zealand",
+  Micronesia: "Micronesia",
+  Polynesia: "Polynesia",
+};

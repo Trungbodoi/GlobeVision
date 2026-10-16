@@ -1,11 +1,14 @@
+import { useI18n } from "../i18n/useI18n";
 import "./LoadingScreen.css";
 
 function LoadingScreen({ progress }) {
+const { t } = useI18n();
+
 return ( <div className="loading-screen"> <div className="loading-content"> <div className="loading-globe">🌍</div>
 
     <h1>GlobeVision</h1>
 
-    <p>Đang tải bản đồ thế giới...</p>
+    <p>{t("app.loading")}</p>
 
     <div className="loading-bar">
       <div
