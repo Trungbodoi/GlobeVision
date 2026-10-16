@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Globe from "globe.gl";
 import * as THREE from "three";
-import * as turf from "@turf/turf";
 
 import { createStars } from "../utils/createStars";
 import { createGraticule } from "../utils/createGraticule";
@@ -35,12 +34,9 @@ function escapeHtml(text) {
 }
 
 // Nước nhỏ cần zoom gần hơn để nhìn thấy.
-function altitudeFor(feature) {
-  const [minLng, minLat, maxLng, maxLat] = turf.bbox(feature);
-  const span = Math.max(maxLng - minLng, maxLat - minLat);
-
-  if (span < 5) return 1.2;
-  if (span < 20) return 1.8;
+function altitudeFor(country) {
+  if (country.span < 5) return 1.2;
+  if (country.span < 20) return 1.8;
 
   return 2.5;
 }
@@ -310,7 +306,7 @@ function WorldGlobe({ onProgress, onLoaded }) {
       {
         lat: selectedCountry.labelLat,
         lng: selectedCountry.labelLng,
-        altitude: altitudeFor(selectedCountry.feature),
+        altitude: altitudeFor(selectedCountry),
       },
       1000
     );

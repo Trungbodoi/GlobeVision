@@ -117,6 +117,27 @@ function roundGeometry(geometry) {
   }
 }
 
+// Độ trải rộng lớn nhất (độ) theo kinh/vĩ độ, dùng để chọn độ cao camera.
+function geometrySpan(geometry) {
+  let minLng = Infinity;
+  let minLat = Infinity;
+  let maxLng = -Infinity;
+  let maxLat = -Infinity;
+
+  const polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+
+  for (const polygon of polygons) {
+    for (const [lng, lat] of polygon[0]) {
+      minLng = Math.min(minLng, lng);
+      maxLng = Math.max(maxLng, lng);
+      minLat = Math.min(minLat, lat);
+      maxLat = Math.max(maxLat, lat);
+    }
+  }
+
+  return round(Math.max(maxLng - minLng, maxLat - minLat));
+}
+
 function normalizeCountry(feature) {
   const p = lowerKeys(feature.properties);
 
@@ -152,6 +173,7 @@ function normalizeCountry(feature) {
       gdpYear: cleanNumber(p.gdp_year),
       labelLat: round(Number(p.label_y)),
       labelLng: round(Number(p.label_x)),
+      span: geometrySpan(feature.geometry),
       disputed: DISPUTED_IDS.has(id),
     },
     geometry: roundGeometry(feature.geometry),
