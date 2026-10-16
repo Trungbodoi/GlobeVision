@@ -2,16 +2,16 @@ import { useEffect, useState } from "react";
 import { getCountryName } from "../data/countries";
 import { getCapitalTimezone } from "../services/countryApi";
 import { useI18n } from "../i18n/useI18n";
+import { MAX_COMPARE } from "../data/compare";
+import ShareButton from "./ShareButton";
+import {
+  formatCallingCodes,
+  formatCurrencies,
+  formatLanguages,
+  hasValue,
+  numberLocale,
+} from "../utils/format";
 import "./CountryCard.css";
-
-// API trả 0 cho một số chỉ số không có dữ liệu (vd. dân số Đài Loan).
-function hasValue(number) {
-  return Number.isFinite(number) && number > 0;
-}
-
-function numberLocale(lang) {
-  return lang === "en" ? "en-US" : "vi-VN";
-}
 
 function AnimatedNumber({ value, duration = 1200 }) {
   const { lang } = useI18n();
@@ -45,15 +45,6 @@ function AnimatedNumber({ value, duration = 1200 }) {
   }, [value, duration]);
 
   return <>{Math.round(displayValue).toLocaleString(numberLocale(lang))}</>;
-}
-
-// Tên ngôn ngữ / tiền tệ theo ngôn ngữ giao diện (có sẵn trong trình duyệt).
-function displayName(lang, type, code, fallback) {
-  try {
-    return new Intl.DisplayNames([lang], { type }).of(code) || fallback;
-  } catch {
-    return fallback;
-  }
 }
 
 // "UTC+07:00" -> 420 (phút)
@@ -134,34 +125,6 @@ function LocalTime({ capital, countryCode, timezones }) {
   );
 }
 
-function ShareButton() {
-  const { t } = useI18n();
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (!copied) return;
-
-    const timer = setTimeout(() => setCopied(false), 2000);
-
-    return () => clearTimeout(timer);
-  }, [copied]);
-
-  return (
-    <button
-      type="button"
-      className="country-card-action"
-      onClick={() => {
-        navigator.clipboard
-          ?.writeText(window.location.href)
-          .then(() => setCopied(true))
-          .catch(() => {});
-      }}
-    >
-      {copied ? t("card.shared") : t("card.share")}
-    </button>
-  );
-}
-
 function Neighbors({ neighbors, onSelect }) {
   const { lang, t } = useI18n();
 
@@ -198,6 +161,8 @@ function CountryCard({
   onSelectNeighbor,
   onRetry,
   onClose,
+  compareIds,
+  onToggleCompare,
 }) {
   const { lang, t, place } = useI18n();
 
@@ -206,24 +171,12 @@ function CountryCard({
   const data = details?.data ?? null;
   const name = getCountryName(country, lang);
 
-  const currencies = data?.currencies
-    ?.map((item) => {
-      const currencyName = displayName(lang, "currency", item.code, item.name);
+  const currencies = formatCurrencies(data?.currencies, lang);
+  const languages = formatLanguages(data?.languages, lang);
+  const callingCodes = formatCallingCodes(data?.callingCodes);
 
-      return item.symbol
-        ? `${currencyName} (${item.code}, ${item.symbol})`
-        : `${currencyName} (${item.code})`;
-    })
-    .join(", ");
-
-  const languages = data?.languages
-    ?.map((item) => displayName(lang, "language", item.iso639_1, item.name))
-    .join(", ");
-
-  const callingCodes = data?.callingCodes
-    ?.filter(Boolean)
-    .map((code) => `+${code}`)
-    .join(", ");
+  const inCompare = compareIds.includes(country.id);
+  const compareFull = !inCompare && compareIds.length >= MAX_COMPARE;
 
   return (
     <div className="country-card" role="dialog" aria-label={name}>
@@ -255,6 +208,17 @@ function CountryCard({
         </div>
 
         <div className="country-card-actions">
+          <button
+            type="button"
+            className={"country-card-action" + (inCompare ? " is-active" : "")}
+            onClick={() => onToggleCompare(country.id)}
+            disabled={compareFull}
+            aria-pressed={inCompare}
+            title={compareFull ? t("compare.full", { max: MAX_COMPARE }) : undefined}
+          >
+            {inCompare ? t("compare.remove") : t("compare.add")}
+          </button>
+
           <ShareButton />
         </div>
       </div>

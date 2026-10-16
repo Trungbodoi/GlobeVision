@@ -6,13 +6,21 @@ import { createStars } from "../utils/createStars";
 import { createGraticule } from "../utils/createGraticule";
 import { createAtmosphere } from "../utils/createAtmosphere";
 import { createCountryBorders } from "../utils/createCountryBorders";
-import { readCountryParam, writeCountryParam } from "../utils/urlState";
+import {
+  readCompareParam,
+  readCountryParam,
+  writeCompareParam,
+  writeCountryParam,
+} from "../utils/urlState";
 import { getCountryInfo } from "../services/countryApi";
 import { loadCountries } from "../data/countries";
+import { COMPARE_COLORS, MAX_COMPARE } from "../data/compare";
 import { useI18n } from "../i18n/useI18n";
 
 import CountryCard from "./CountryCard";
 import CountrySearch from "./CountrySearch";
+import CompareTray from "./CompareTray";
+import ComparePanel from "./ComparePanel";
 import "./WorldGlobe.css";
 
 // Chiều rộng thẻ thông tin + lề (xem CountryCard.css).
@@ -48,10 +56,17 @@ function WorldGlobe({ onProgress, onLoaded }) {
   const [selectedId, setSelectedId] = useState(null);
   const [details, setDetails] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [compareIds, setCompareIds] = useState([]);
+  const [compareOpen, setCompareOpen] = useState(false);
 
   const globeRef = useRef();
   const globeInstanceRef = useRef(null);
-  const highlightRef = useRef({ hoverId: null, selectedId: null, neighborIds: new Set() });
+  const highlightRef = useRef({
+    hoverId: null,
+    selectedId: null,
+    neighborIds: new Set(),
+    compareColors: new Map(),
+  });
   const langRef = useRef(lang);
 
   // Chọn quốc gia từ thao tác người dùng (bấm trên địa cầu, tìm kiếm,
@@ -67,6 +82,29 @@ function WorldGlobe({ onProgress, onLoaded }) {
   }, []);
 
   // ----------------------------------------------------------------
+  // Danh sách so sánh (tối đa MAX_COMPARE quốc gia), đồng bộ ?compare=
+  // ----------------------------------------------------------------
+  const updateCompare = useCallback((nextIds) => {
+    writeCompareParam(nextIds);
+    setCompareIds(nextIds);
+
+    if (nextIds.length < 2) setCompareOpen(false);
+  }, []);
+
+  const toggleCompare = useCallback(
+    (id) => {
+      if (compareIds.includes(id)) {
+        updateCompare(compareIds.filter((item) => item !== id));
+      } else if (compareIds.length < MAX_COMPARE) {
+        updateCompare([...compareIds, id]);
+      }
+    },
+    [compareIds, updateCompare]
+  );
+
+  const closeCompare = useCallback(() => setCompareOpen(false), []);
+
+  // ----------------------------------------------------------------
   // Khởi tạo địa cầu (chạy một lần)
   // ----------------------------------------------------------------
   useEffect(() => {
@@ -80,10 +118,11 @@ function WorldGlobe({ onProgress, onLoaded }) {
     let disposed = false;
 
     function applyColors() {
-      const { hoverId, selectedId: current, neighborIds } = highlightRef.current;
+      const { hoverId, selectedId: current, neighborIds, compareColors } = highlightRef.current;
 
       globe?.polygonCapColor(({ properties }) => {
         if (properties.id === hoverId) return COLORS.hover;
+        if (compareColors.has(properties.id)) return compareColors.get(properties.id);
         if (properties.id === current) return COLORS.selected;
         if (neighborIds.has(properties.id)) return COLORS.neighbor;
 
@@ -229,6 +268,20 @@ function WorldGlobe({ onProgress, onLoaded }) {
           writeCountryParam(null, { replace: true });
         }
 
+        // Danh sách so sánh trong liên kết được chia sẻ (?compare=VN,JP,FR):
+        // bỏ mã không hợp lệ / trùng, mở bảng so sánh ngay nếu đủ 2 nước.
+        const sharedCompare = readCompareParam();
+        const initialCompare = [...new Set(sharedCompare)]
+          .filter((id) => data.byId.has(id))
+          .slice(0, MAX_COMPARE);
+
+        if (initialCompare.join(",") !== sharedCompare.join(",")) {
+          writeCompareParam(initialCompare);
+        }
+
+        setCompareIds(initialCompare);
+        setCompareOpen(initialCompare.length >= 2);
+
         if (onLoaded) {
           requestAnimationFrame(() => {
             onLoaded();
@@ -285,12 +338,15 @@ function WorldGlobe({ onProgress, onLoaded }) {
       const id = readCountryParam();
 
       setSelectedId(id && countryData.byId.has(id) ? id : null);
+
+      // Back/Forward chỉ đổi quốc gia đang xem; giữ nguyên danh sách so sánh.
+      writeCompareParam(compareIds);
     };
 
     window.addEventListener("popstate", handlePopState);
 
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [countryData]);
+  }, [countryData, compareIds]);
 
   const selectedCountry = selectedId ? countryData?.byId.get(selectedId) ?? null : null;
 
@@ -350,12 +406,20 @@ function WorldGlobe({ onProgress, onLoaded }) {
     return borders.map((code) => countryData.byIso3.get(code)).filter(Boolean);
   }, [countryData, currentDetails]);
 
-  // Tô màu quốc gia đang chọn và các nước láng giềng
+  const compareCountries = useMemo(
+    () => (countryData ? compareIds.map((id) => countryData.byId.get(id)).filter(Boolean) : []),
+    [countryData, compareIds]
+  );
+
+  // Tô màu quốc gia đang chọn, các nước láng giềng và các nước đang so sánh
   useEffect(() => {
     highlightRef.current.selectedId = selectedId;
     highlightRef.current.neighborIds = new Set(neighbors.map((country) => country.id));
+    highlightRef.current.compareColors = new Map(
+      compareIds.map((id, index) => [id, COMPARE_COLORS[index]])
+    );
     globeInstanceRef.current?.applyColors();
-  }, [selectedId, neighbors]);
+  }, [selectedId, neighbors, compareIds]);
 
   // Co giãn vùng vẽ khi mở/đóng thẻ thông tin
   useEffect(() => {
@@ -383,7 +447,24 @@ function WorldGlobe({ onProgress, onLoaded }) {
         onSelectNeighbor={selectCountry}
         onRetry={() => setRetryCount((count) => count + 1)}
         onClose={closeCountry}
+        compareIds={compareIds}
+        onToggleCompare={toggleCompare}
       />
+
+      <CompareTray
+        countries={compareCountries}
+        onRemove={(id) => updateCompare(compareIds.filter((item) => item !== id))}
+        onClear={() => updateCompare([])}
+        onOpen={() => setCompareOpen(true)}
+      />
+
+      {compareOpen && compareCountries.length >= 2 && (
+        <ComparePanel
+          countries={compareCountries}
+          byIso3={countryData.byIso3}
+          onClose={closeCompare}
+        />
+      )}
 
       <SourceNote />
     </div>

@@ -1,0 +1,416 @@
+.compare-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+
+  background: rgba(0, 0, 0, 0.55);
+
+  animation: overlayEnter 0.25s ease;
+}
+
+@keyframes overlayEnter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.compare-panel {
+  display: flex;
+  flex-direction: column;
+
+  width: min(980px, 100%);
+  max-height: calc(100vh - 48px);
+
+  background: rgba(10, 17, 30, 0.97);
+
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+
+  color: white;
+
+  overflow: hidden;
+
+  animation: panelEnter 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes panelEnter {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.compare-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  padding: 18px 20px 18px 24px;
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.compare-panel-header h2 {
+  margin: 0;
+
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.compare-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.compare-panel-action {
+  padding: 7px 14px;
+
+  background: rgba(255, 255, 255, 0.08);
+
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+
+  color: white;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.compare-panel-action:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.compare-panel-close {
+  width: 36px;
+  height: 36px;
+
+  padding: 0;
+
+  background: rgba(0, 0, 0, 0.25);
+
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 50%;
+
+  color: white;
+  font-size: 23px;
+  font-weight: 300;
+  line-height: 1;
+
+  cursor: pointer;
+}
+
+.compare-panel-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.compare-panel button:focus-visible,
+.column-chart-slot:focus-visible {
+  outline: 2px solid rgba(77, 171, 247, 0.8);
+  outline-offset: 2px;
+}
+
+.compare-panel-body {
+  padding: 8px 24px 24px;
+
+  overflow-y: auto;
+}
+
+.compare-section-title {
+  margin: 18px 0 12px;
+
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  color: rgba(255, 255, 255, 0.5);
+}
+
+
+/* ==============================
+   COLUMN CHART
+================================ */
+
+.compare-charts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.column-chart {
+  margin: 0;
+  padding: 14px 14px 12px;
+
+  background: rgba(255, 255, 255, 0.04);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+
+.column-chart-title {
+  margin-bottom: 10px;
+
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.column-chart-plot {
+  position: relative;
+
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 2px;
+
+  height: 170px;
+  padding-top: 22px;
+
+  /* Đường đáy */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.column-chart-slot {
+  position: relative;
+
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+
+  height: 100%;
+
+  outline-offset: 2px;
+}
+
+.column-chart-value {
+  margin-bottom: 4px;
+
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+
+  white-space: nowrap;
+}
+
+.column-chart-bar {
+  display: block;
+
+  width: min(38px, 70%);
+
+  /* Bo 4px ở đầu cột, đáy cột bám đường đáy */
+  border-radius: 4px 4px 0 0;
+
+  transition:
+    height 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.2s ease;
+}
+
+.column-chart-bar.is-dimmed {
+  opacity: 0.45;
+}
+
+.column-chart-labels {
+  display: flex;
+  justify-content: space-around;
+  gap: 2px;
+
+  margin-top: 8px;
+}
+
+.column-chart-label {
+  flex: 1;
+
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+
+  overflow-wrap: anywhere;
+}
+
+.column-chart-tooltip {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 1;
+
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 5px 9px;
+
+  transform: translateX(-50%);
+
+  background: white;
+  border-radius: 8px;
+
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+
+  color: #0a111e;
+  font-size: 12px;
+
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.column-chart-tooltip-swatch {
+  width: 8px;
+  height: 8px;
+
+  border-radius: 50%;
+}
+
+
+/* ==============================
+   TABLE
+================================ */
+
+.compare-table-wrap {
+  overflow-x: auto;
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+
+.compare-table {
+  width: 100%;
+  min-width: 560px;
+
+  border-collapse: collapse;
+
+  font-size: 14px;
+}
+
+.compare-table th,
+.compare-table td {
+  padding: 11px 14px;
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+  text-align: left;
+  vertical-align: top;
+}
+
+.compare-table tbody tr:last-child th,
+.compare-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.compare-table thead th {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.compare-table tbody th {
+  width: 150px;
+
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+
+  /* Cột nhãn cố định khi cuộn ngang trên điện thoại */
+  position: sticky;
+  left: 0;
+
+  background: rgb(14, 21, 34);
+}
+
+.compare-table td {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.compare-table td.is-numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+.compare-table-country {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.compare-table-flag {
+  width: 28px;
+  height: 19px;
+
+  object-fit: cover;
+
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.compare-note {
+  margin: 12px 0 0;
+
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+
+/* ==============================
+   MOBILE
+================================ */
+
+@media (max-width: 760px) {
+  .compare-charts {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .compare-overlay {
+    padding: 0;
+  }
+
+  .compare-panel {
+    max-height: 100vh;
+    height: 100%;
+
+    border-radius: 0;
+  }
+
+  .compare-panel-header {
+    padding: 14px 14px 14px 16px;
+  }
+
+  .compare-panel-header h2 {
+    font-size: 18px;
+  }
+
+  .compare-panel-body {
+    padding: 4px 16px 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .compare-overlay,
+  .compare-panel,
+  .column-chart-bar {
+    animation: none;
+    transition: none;
+  }
+}
