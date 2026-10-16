@@ -370,6 +370,153 @@
 }
 
 
+.country-info-item.is-wide {
+  flex-direction: column;
+  gap: 8px;
+}
+
+.country-info-item.is-wide .country-info-label {
+  flex-basis: auto;
+}
+
+.country-info-item.is-wide .country-info-value {
+  text-align: left;
+}
+
+.country-info-muted {
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+
+/* ==============================
+   ACTIONS
+================================ */
+
+.country-card-actions {
+  display: flex;
+  gap: 8px;
+
+  margin-top: 14px;
+}
+
+.country-card-action {
+  padding: 6px 12px;
+
+  background: rgba(255, 255, 255, 0.08);
+
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+
+  color: white;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: background 0.2s ease;
+}
+
+.country-card-action:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.country-card-action.is-active {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: transparent;
+  color: #0a111e;
+}
+
+.country-card-action.is-active:hover {
+  background: white;
+}
+
+.country-card-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+
+/* ==============================
+   NEIGHBORS
+================================ */
+
+.country-neighbors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.country-neighbor {
+  padding: 5px 11px;
+
+  background: rgba(165, 216, 255, 0.12);
+
+  border: 1px solid rgba(165, 216, 255, 0.35);
+  border-radius: 999px;
+
+  color: #d0ebff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.country-neighbor:hover {
+  background: rgba(165, 216, 255, 0.24);
+  border-color: rgba(165, 216, 255, 0.6);
+}
+
+
+/* ==============================
+   NOTICES
+================================ */
+
+.country-notice {
+  margin: 6px 5px 10px;
+  padding: 10px 12px;
+
+  background: rgba(255, 255, 255, 0.06);
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.country-notice.is-error {
+  background: rgba(250, 82, 82, 0.1);
+  border-color: rgba(250, 82, 82, 0.35);
+}
+
+.country-notice-retry {
+  padding: 0;
+
+  background: none;
+  border: none;
+
+  color: #74c0fc;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+
+  cursor: pointer;
+}
+
+.country-card button:focus-visible {
+  outline: 2px solid rgba(77, 171, 247, 0.8);
+  outline-offset: 2px;
+}
+
+
 /* ==============================
    LOADING
 ================================ */
@@ -425,7 +572,8 @@
 
     width: auto;
 
-    max-height: 72vh;
+    /* Phần trên 45% màn hình dành cho địa cầu (xem fitGlobe) */
+    max-height: calc(55vh - 24px);
 
     border-radius: 20px;
   }

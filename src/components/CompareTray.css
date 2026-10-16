@@ -1,0 +1,166 @@
+.compare-tray {
+  position: fixed;
+  left: 24px;
+  bottom: 56px;
+  z-index: 99997;
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+
+  max-width: min(560px, calc(100vw - 48px));
+  padding: 10px 12px;
+
+  background: rgba(10, 17, 30, 0.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+
+  color: white;
+
+  animation: trayEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes trayEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.compare-tray-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.compare-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  padding: 4px 4px 4px 10px;
+
+  background: rgba(255, 255, 255, 0.07);
+
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.compare-swatch {
+  width: 10px;
+  height: 10px;
+
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(10, 17, 30, 0.9);
+}
+
+.compare-chip-remove {
+  width: 22px;
+  height: 22px;
+
+  padding: 0;
+
+  background: none;
+  border: none;
+  border-radius: 50%;
+
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+  line-height: 1;
+
+  cursor: pointer;
+}
+
+.compare-chip-remove:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+}
+
+.compare-tray-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.compare-open,
+.compare-clear {
+  padding: 7px 14px;
+
+  border-radius: 999px;
+
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.compare-open {
+  background: white;
+  border: 1px solid white;
+  color: #0a111e;
+}
+
+.compare-open:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.compare-clear {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.compare-clear:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.compare-tray-hint {
+  flex-basis: 100%;
+
+  margin: 0;
+
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.compare-tray button:focus-visible {
+  outline: 2px solid rgba(77, 171, 247, 0.8);
+  outline-offset: 2px;
+}
+
+/* Khi thẻ thông tin đang mở: chừa chỗ cho thẻ bên phải (370px + lề) */
+.world-globe:has(.country-card) .compare-tray {
+  max-width: max(240px, min(560px, calc(100vw - 442px)));
+}
+
+@media (max-width: 600px) {
+  /* Thẻ thông tin chiếm nửa dưới: đặt thanh so sánh ngay dưới ô tìm kiếm */
+  .compare-tray,
+  .world-globe:has(.country-card) .compare-tray {
+    top: 68px;
+    left: 12px;
+    bottom: auto;
+
+    max-width: calc(100vw - 24px);
+    padding: 8px 10px;
+  }
+}

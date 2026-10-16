@@ -10,7 +10,8 @@ const ROOT = __dirname;
 
 const CURRENT_GEOJSON = path.join(
   ROOT,
-  "public",
+  "data",
+  "source",
   "custom.geojson"
 );
 

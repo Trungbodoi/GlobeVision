@@ -1,7 +1,8 @@
 .loading-screen {
 position: fixed;
 inset: 0;
-z-index: 9999;
+/* Nằm trên thẻ thông tin (99999) và ô tìm kiếm khi đang tải */
+z-index: 100001;
 
 display: flex;
 align-items: center;

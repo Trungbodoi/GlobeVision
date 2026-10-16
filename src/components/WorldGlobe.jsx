@@ -1,23 +1,112 @@
-import { useEffect, useRef , useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Globe from "globe.gl";
 import * as THREE from "three";
-import * as turf from "@turf/turf";
-
 
 import { createStars } from "../utils/createStars";
 import { createGraticule } from "../utils/createGraticule";
 import { createAtmosphere } from "../utils/createAtmosphere";
 import { createCountryBorders } from "../utils/createCountryBorders";
+import {
+  readCompareParam,
+  readCountryParam,
+  writeCompareParam,
+  writeCountryParam,
+} from "../utils/urlState";
 import { getCountryInfo } from "../services/countryApi";
+import { loadCountries } from "../data/countries";
+import { COMPARE_COLORS, MAX_COMPARE } from "../data/compare";
+import { useI18n } from "../i18n/useI18n";
 
 import CountryCard from "./CountryCard";
+import CountrySearch from "./CountrySearch";
+import CompareTray from "./CompareTray";
+import ComparePanel from "./ComparePanel";
+import "./WorldGlobe.css";
 
+// Chiều rộng thẻ thông tin + lề (xem CountryCard.css).
+const CARD_SPACE = 370 + 24 * 2;
+const MOBILE_BREAKPOINT = 600;
 
-function WorldGlobe({ onProgress, onLoaded }) {  
-  const [selectedCountry, setSelectedCountry] = useState(null);
-  const [loadingCountry, setLoadingCountry] = useState(false);
+const COLORS = {
+  default: "#eeeeee",
+  hover: "#4dabf7",
+  selected: "#1c7ed6",
+  neighbor: "#a5d8ff",
+};
+
+function escapeHtml(text) {
+  return String(text).replace(
+    /[&<>"']/g,
+    (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]
+  );
+}
+
+// Nước nhỏ cần zoom gần hơn để nhìn thấy.
+function altitudeFor(country) {
+  if (country.span < 5) return 1.2;
+  if (country.span < 20) return 1.8;
+
+  return 2.5;
+}
+
+function WorldGlobe({ onProgress, onLoaded }) {
+  const { lang } = useI18n();
+
+  const [countryData, setCountryData] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
+  const [details, setDetails] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [compareIds, setCompareIds] = useState([]);
+  const [compareOpen, setCompareOpen] = useState(false);
+
   const globeRef = useRef();
+  const globeInstanceRef = useRef(null);
+  const highlightRef = useRef({
+    hoverId: null,
+    selectedId: null,
+    neighborIds: new Set(),
+    compareColors: new Map(),
+  });
+  const langRef = useRef(lang);
 
+  // Chọn quốc gia từ thao tác người dùng (bấm trên địa cầu, tìm kiếm,
+  // bấm nước láng giềng): cập nhật URL để có thể chia sẻ và Back.
+  const selectCountry = useCallback((id) => {
+    writeCountryParam(id);
+    setSelectedId(id);
+  }, []);
+
+  const closeCountry = useCallback(() => {
+    writeCountryParam(null);
+    setSelectedId(null);
+  }, []);
+
+  // ----------------------------------------------------------------
+  // Danh sách so sánh (tối đa MAX_COMPARE quốc gia), đồng bộ ?compare=
+  // ----------------------------------------------------------------
+  const updateCompare = useCallback((nextIds) => {
+    writeCompareParam(nextIds);
+    setCompareIds(nextIds);
+
+    if (nextIds.length < 2) setCompareOpen(false);
+  }, []);
+
+  const toggleCompare = useCallback(
+    (id) => {
+      if (compareIds.includes(id)) {
+        updateCompare(compareIds.filter((item) => item !== id));
+      } else if (compareIds.length < MAX_COMPARE) {
+        updateCompare([...compareIds, id]);
+      }
+    },
+    [compareIds, updateCompare]
+  );
+
+  const closeCompare = useCallback(() => setCompareOpen(false), []);
+
+  // ----------------------------------------------------------------
+  // Khởi tạo địa cầu (chạy một lần)
+  // ----------------------------------------------------------------
   useEffect(() => {
     let globe;
     let stars;
@@ -26,86 +115,73 @@ function WorldGlobe({ onProgress, onLoaded }) {
     let borders;
     let starMaterial;
     let atmosMat;
+    let disposed = false;
+
+    function applyColors() {
+      const { hoverId, selectedId: current, neighborIds, compareColors } = highlightRef.current;
+
+      globe?.polygonCapColor(({ properties }) => {
+        if (properties.id === hoverId) return COLORS.hover;
+        if (compareColors.has(properties.id)) return compareColors.get(properties.id);
+        if (properties.id === current) return COLORS.selected;
+        if (neighborIds.has(properties.id)) return COLORS.neighbor;
+
+        return COLORS.default;
+      });
+    }
+
+    // Khi thẻ thông tin đang mở, thu nhỏ vùng vẽ để quốc gia được chọn
+    // nằm giữa phần màn hình còn trống thay vì bị thẻ che.
+    function fitGlobe() {
+      if (!globe) return;
+
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const cardOpen = Boolean(highlightRef.current.selectedId);
+
+      if (cardOpen && width > MOBILE_BREAKPOINT) {
+        globe.width(width - CARD_SPACE).height(height);
+      } else if (cardOpen) {
+        globe.width(width).height(Math.round(height * 0.45));
+      } else {
+        globe.width(width).height(height);
+      }
+    }
+
+    window.addEventListener("resize", fitGlobe);
 
     async function loadGlobe() {
       try {
         if (onProgress) onProgress(10);
 
-        const [countryResponse, boundaryResponse] = await Promise.all([
-            fetch(`${import.meta.env.BASE_URL}custom.geojson`),
-            fetch(`${import.meta.env.BASE_URL}boundary-lines.geojson`),
+        const [data, boundaryData] = await Promise.all([
+          loadCountries(),
+          fetch(`${import.meta.env.BASE_URL}data/boundaries.geojson`).then((response) =>
+            response.json()
+          ),
         ]);
-        if (onProgress) onProgress(30);
 
-        const countries = await countryResponse.json();
-        const boundaryData = await boundaryResponse.json();
+        if (disposed) return;
         if (onProgress) onProgress(45);
-        console.log(
-          "Tổng số features:",
-          countries.features.length
-        );
-        console.log("===== DANH SÁCH QUỐC GIA =====");
-
-countries.features.forEach((feature, index) => {
-  const name =
-    feature.properties?.name ||
-    feature.properties?.NAME ||
-    feature.properties?.ADMIN ||
-    "Unknown";
-
-  const code =
-    feature.properties?.ISO_A2 ||
-    feature.properties?.ISO_A3 ||
-    feature.properties?.iso_a2 ||
-    feature.properties?.iso_a3 ||
-    "";
-
-  console.log(`${index + 1}. ${name} (${code})`);
-});
-
-console.log("==============================");
-
-        const validFeatures = countries.features.filter(
-          (feature) =>
-            feature.geometry &&
-            (feature.geometry.type === "Polygon" ||
-              feature.geometry.type === "MultiPolygon")
-        );
-
-        console.log(
-          "Boundary features:",
-          boundaryData.features.length
-        );
-
-        console.log(
-          `Render ${validFeatures.length}/${countries.features.length}`
-        );
 
         globe = Globe()(globeRef.current);
+        globeInstanceRef.current = { globe, applyColors, fitGlobe };
         if (onProgress) onProgress(55);
+
         const scene = globe.scene();
 
         // Nền
         scene.background = new THREE.Color(0x000000);
 
         // Ánh sáng
-        const ambientLight = new THREE.AmbientLight(
-          0x4488cc,
-          2.5
-        );
+        const ambientLight = new THREE.AmbientLight(0x4488cc, 2.5);
         scene.add(ambientLight);
 
-        const sunLight = new THREE.DirectionalLight(
-          0xffffff,
-          3
-        );
+        const sunLight = new THREE.DirectionalLight(0xffffff, 3);
         sunLight.position.set(15, 5, 10);
         scene.add(sunLight);
 
-        const fillLight = new THREE.DirectionalLight(
-          0x4488cc,
-          0.8
-        );
+        const fillLight = new THREE.DirectionalLight(0x4488cc, 0.8);
         fillLight.position.set(-5, -2, -5);
         scene.add(fillLight);
 
@@ -113,8 +189,9 @@ console.log("==============================");
         ({ stars, starMaterial } = createStars(globe, scene));
         graticuleGroup = createGraticule(scene, 100);
         ({ atmosphere, atmosMat } = createAtmosphere(scene, globe, 100));
-        borders = createCountryBorders(scene, globe ,boundaryData);
+        borders = createCountryBorders(scene, globe, boundaryData);
         if (onProgress) onProgress(70);
+
         // Globe.gl
         globe
           .showAtmosphere(false)
@@ -125,16 +202,11 @@ console.log("==============================");
               metalness: 0.05,
             })
           )
-          .polygonCapColor(() => "#eeeeee")
           .polygonSideColor(() => "#cccccc")
           .polygonStrokeColor(() => "rgba(0,0,0,0)")
           .polygonAltitude(0.01)
           .polygonLabel(({ properties }) => {
-            const name =
-              properties?.name ||
-              properties?.NAME ||
-              properties?.ADMIN ||
-              "Unknown";
+            const name = langRef.current === "en" ? properties.nameEn : properties.nameVi;
 
             return `
               <div style="
@@ -144,89 +216,22 @@ console.log("==============================");
                 color: black;
                 font-size: 14px;
               ">
-                <b>${name}</b>
+                <b>${escapeHtml(name)}</b>
               </div>
             `;
           })
-          .onPolygonClick(async (feature) => {
-            const name =
-              feature.properties?.name ||
-              feature.properties?.NAME ||
-              feature.properties?.ADMIN ||
-              "Unknown";
-
-            const code =
-              feature.properties?.["ISO3166-1-Alpha-3"] ||
-              feature.properties?.["iso_a3"] ||
-              feature.properties?.ISO_A3 ||
-              feature.properties?.[
-                "ISO3166-1-Alpha-2"
-              ];
-
-            console.log("CLICK:", name);
-            console.log("ISO code:", code);
-
-            // Tính tâm quốc gia
-            const centroid = turf.centroid(feature);
-
-            const [lng, lat] =
-              centroid.geometry.coordinates;
-
-            console.log("CENTER:", lat, lng);
-
-            // Xoay quả địa cầu
-            globe.pointOfView(
-              {
-                lat,
-                lng,
-                altitude: 2.5,
-              },
-              1000
-            );
-
-            // Mở card ngay
-            setSelectedCountry({
-              feature,
-              name,
-              code,
-              lat,
-              lng,
-              apiData: null,
-            });
-
-            // Loading
-            setLoadingCountry(true);
-
-            try {
-              const country =
-                await getCountryInfo(code);
-
-              console.log(
-                "COUNTRY API:",
-                country
-              );
-
-              setSelectedCountry((prev) => ({
-                ...prev,
-                apiData: country,
-              }));
-            } catch (error) {
-              console.error(error);
-            } finally {
-              setLoadingCountry(false);
-            }
+          .onPolygonClick((feature) => {
+            selectCountry(feature.properties.id);
           })
           .onPolygonHover((feature) => {
-            globe.polygonCapColor((d) => {
-              if (d === feature) {
-                return "#4dabf7";
-              }
-
-              return "#eeeeee";
-            });
+            highlightRef.current.hoverId = feature?.properties.id ?? null;
+            applyColors();
           })
-          .polygonsData(validFeatures);
-          if (onProgress) onProgress(90);
+          .polygonsData(data.features);
+
+        applyColors();
+        if (onProgress) onProgress(90);
+
         // Camera
         globe.pointOfView({
           lat: 20,
@@ -244,38 +249,64 @@ console.log("==============================");
 
         controls.addEventListener("change", () => {
           if (starMaterial) {
-            starMaterial.uniforms.uCameraPosition.value.copy(
-              globe.camera().position
-            );
+            starMaterial.uniforms.uCameraPosition.value.copy(globe.camera().position);
           }
 
           if (atmosMat) {
-            atmosMat.uniforms.uViewPos.value.copy(
-              globe.camera().position
-            );
+            atmosMat.uniforms.uViewPos.value.copy(globe.camera().position);
           }
         });
-                if (onLoaded) {
+
+        setCountryData(data);
+
+        // Mở quốc gia trong liên kết được chia sẻ (?country=VN)
+        const initialId = readCountryParam();
+
+        if (initialId && data.byId.has(initialId)) {
+          setSelectedId(initialId);
+        } else if (initialId) {
+          writeCountryParam(null, { replace: true });
+        }
+
+        // Danh sách so sánh trong liên kết được chia sẻ (?compare=VN,JP,FR):
+        // bỏ mã không hợp lệ / trùng, mở bảng so sánh ngay nếu đủ 2 nước.
+        const sharedCompare = readCompareParam();
+        const initialCompare = [...new Set(sharedCompare)]
+          .filter((id) => data.byId.has(id))
+          .slice(0, MAX_COMPARE);
+
+        if (initialCompare.join(",") !== sharedCompare.join(",")) {
+          writeCompareParam(initialCompare);
+        }
+
+        setCompareIds(initialCompare);
+        setCompareOpen(initialCompare.length >= 2);
+
+        if (onLoaded) {
           requestAnimationFrame(() => {
             onLoaded();
           });
         }
-        } catch (error) {
-          console.error("ERROR:", error);
+      } catch (error) {
+        console.error("ERROR:", error);
 
-          if (onProgress) onProgress(100);
+        if (onProgress) onProgress(100);
 
-          if (onLoaded) {
-            setTimeout(() => {
-              onLoaded();
-            }, 300);
-          }
+        if (onLoaded) {
+          setTimeout(() => {
+            onLoaded();
+          }, 300);
         }
+      }
     }
 
     loadGlobe();
 
     return () => {
+      disposed = true;
+      globeInstanceRef.current = null;
+      window.removeEventListener("resize", fitGlobe);
+
       if (globe) {
         globe._destructor();
       }
@@ -293,35 +324,157 @@ console.log("==============================");
         });
       });
     };
+    // Địa cầu chỉ được tạo một lần khi component mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-return (
-  <div
-    style={{
-      width: "100vw",
-      height: "100vh",
-      background: "#000",
-      position: "relative",
-      overflow: "hidden",
-    }}
-  >
-    {/* Globe */}
-    <div
-      ref={globeRef}
-      style={{
-        width: "100%",
-        height: "100%",
-      }}
-    />
+  // ----------------------------------------------------------------
+  // Nút Back/Forward của trình duyệt
+  // ----------------------------------------------------------------
+  useEffect(() => {
+    if (!countryData) return;
 
-    {/* Country Card */}
-    <CountryCard
-      country={selectedCountry}
-      loading={loadingCountry}
-      onClose={() => setSelectedCountry(null)}
-    />
-  </div>
-);
+    const handlePopState = () => {
+      const id = readCountryParam();
+
+      setSelectedId(id && countryData.byId.has(id) ? id : null);
+
+      // Back/Forward chỉ đổi quốc gia đang xem; giữ nguyên danh sách so sánh.
+      writeCompareParam(compareIds);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [countryData, compareIds]);
+
+  const selectedCountry = selectedId ? countryData?.byId.get(selectedId) ?? null : null;
+
+  // ----------------------------------------------------------------
+  // Đưa camera đến quốc gia được chọn
+  // ----------------------------------------------------------------
+  useEffect(() => {
+    const globe = globeInstanceRef.current?.globe;
+
+    if (!globe || !selectedCountry) return;
+
+    globe.pointOfView(
+      {
+        lat: selectedCountry.labelLat,
+        lng: selectedCountry.labelLng,
+        altitude: altitudeFor(selectedCountry),
+      },
+      1000
+    );
+  }, [selectedCountry]);
+
+  // ----------------------------------------------------------------
+  // Tải thông tin chi tiết từ API
+  // ----------------------------------------------------------------
+  const requestKey = selectedCountry?.apiCode ? `${selectedCountry.apiCode}:${retryCount}` : null;
+
+  useEffect(() => {
+    if (!requestKey) return;
+
+    const code = requestKey.split(":")[0];
+    let cancelled = false;
+
+    getCountryInfo(code)
+      .then((result) => {
+        if (!cancelled) setDetails({ key: requestKey, ...result, error: null });
+      })
+      .catch((error) => {
+        if (!cancelled) setDetails({ key: requestKey, data: null, error });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [requestKey]);
+
+  const currentDetails = details?.key === requestKey ? details : null;
+  const loadingDetails = Boolean(requestKey) && !currentDetails;
+
+  // ----------------------------------------------------------------
+  // Quốc gia láng giềng (API trả mã alpha-3)
+  // ----------------------------------------------------------------
+  const neighbors = useMemo(() => {
+    const borders = currentDetails?.data?.borders;
+
+    if (!countryData || !Array.isArray(borders)) return [];
+
+    return borders.map((code) => countryData.byIso3.get(code)).filter(Boolean);
+  }, [countryData, currentDetails]);
+
+  const compareCountries = useMemo(
+    () => (countryData ? compareIds.map((id) => countryData.byId.get(id)).filter(Boolean) : []),
+    [countryData, compareIds]
+  );
+
+  // Tô màu quốc gia đang chọn, các nước láng giềng và các nước đang so sánh
+  useEffect(() => {
+    highlightRef.current.selectedId = selectedId;
+    highlightRef.current.neighborIds = new Set(neighbors.map((country) => country.id));
+    highlightRef.current.compareColors = new Map(
+      compareIds.map((id, index) => [id, COMPARE_COLORS[index]])
+    );
+    globeInstanceRef.current?.applyColors();
+  }, [selectedId, neighbors, compareIds]);
+
+  // Co giãn vùng vẽ khi mở/đóng thẻ thông tin
+  useEffect(() => {
+    globeInstanceRef.current?.fitGlobe();
+  }, [selectedId, countryData]);
+
+  // Nhãn khi rê chuột theo ngôn ngữ hiện tại
+  useEffect(() => {
+    langRef.current = lang;
+  }, [lang]);
+
+  return (
+    <div className="world-globe">
+      {/* Globe */}
+      <div ref={globeRef} className="world-globe-canvas" />
+
+      {countryData && <CountrySearch countries={countryData.list} onSelect={selectCountry} />}
+
+      {/* Country Card */}
+      <CountryCard
+        country={selectedCountry}
+        details={currentDetails}
+        loading={loadingDetails}
+        neighbors={neighbors}
+        onSelectNeighbor={selectCountry}
+        onRetry={() => setRetryCount((count) => count + 1)}
+        onClose={closeCountry}
+        compareIds={compareIds}
+        onToggleCompare={toggleCompare}
+      />
+
+      <CompareTray
+        countries={compareCountries}
+        onRemove={(id) => updateCompare(compareIds.filter((item) => item !== id))}
+        onClear={() => updateCompare([])}
+        onOpen={() => setCompareOpen(true)}
+      />
+
+      {compareOpen && compareCountries.length >= 2 && (
+        <ComparePanel
+          countries={compareCountries}
+          byIso3={countryData.byIso3}
+          onClose={closeCompare}
+        />
+      )}
+
+      <SourceNote />
+    </div>
+  );
+}
+
+function SourceNote() {
+  const { t } = useI18n();
+
+  return <p className="world-globe-sources">{t("footer.sources")}</p>;
 }
 
 export default WorldGlobe;
