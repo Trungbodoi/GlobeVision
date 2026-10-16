@@ -10,6 +10,7 @@ Bản chạy thử: https://trungbodoi.github.io/GlobeVision/
 - **Tìm kiếm quốc gia** theo tên tiếng Việt, tiếng Anh, tên thông dụng (vd. "Mỹ", "UK") hoặc mã ISO; điều khiển được bằng bàn phím.
 - **Thẻ thông tin quốc gia:** quốc kỳ, thủ đô, giờ địa phương tại thủ đô, dân số, diện tích, mật độ dân số, khu vực, tiền tệ, ngôn ngữ, múi giờ, mã điện thoại, tên bản địa.
 - **Quốc gia láng giềng:** liệt kê và tô sáng trên địa cầu; bấm để chuyển sang nước đó.
+- **So sánh tối đa 3 quốc gia:** bấm "+ So sánh" trên thẻ thông tin; bảng so sánh gồm biểu đồ cột (dân số, diện tích, mật độ) và bảng số liệu; các nước được tô màu tương ứng trên địa cầu. Chia sẻ bằng liên kết dạng `?compare=VN,JP,FR`.
 - **Chia sẻ liên kết:** quốc gia đang xem nằm trên URL (vd. `?country=VN`), dùng được nút Back/Forward và nút "Sao chép liên kết".
 - **Hoạt động ổn định khi API lỗi:** dữ liệu đã tải được lưu lại; khi mất kết nối, ứng dụng hiển thị dữ liệu đã lưu hoặc dữ liệu cơ bản từ bản đồ, kèm nút "Thử lại".
 - **Tiếng Việt / English:** chuyển ngôn ngữ bằng nút VI/EN, lựa chọn được ghi nhớ.
@@ -69,7 +70,7 @@ data/source/           Dữ liệu GeoJSON gốc (không phục vụ trực ti�
 public/data/           Dữ liệu đã chuẩn hóa mà ứng dụng tải
 scripts/               Script xử lý dữ liệu
 src/
-  components/          WorldGlobe, CountryCard, CountrySearch, LoadingScreen
+  components/          WorldGlobe, CountryCard, CountrySearch, CompareTray, ComparePanel, ...
   data/countries.js    Tải, lập chỉ mục và tìm kiếm quốc gia
   i18n/                Chuỗi giao diện tiếng Việt / tiếng Anh
   services/            Gọi API countries.dev, có cache
