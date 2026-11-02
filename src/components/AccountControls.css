@@ -1,0 +1,286 @@
+.account-button {
+  flex-shrink: 0;
+
+  height: 46px;
+  padding: 0 14px;
+
+  background: rgba(10, 17, 30, 0.85);
+
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+
+  color: white;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+
+  cursor: pointer;
+}
+
+.account-button:hover:not(:disabled) {
+  background: rgba(40, 50, 70, 0.95);
+}
+
+.account-signed-in {
+  position: fixed;
+  top: 80px;
+  left: 24px;
+  z-index: 99996;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-signed-in .account-button {
+  height: 40px;
+}
+
+.account-name {
+  display: flex;
+  flex-direction: column;
+
+  max-width: 180px;
+  padding: 3px 12px;
+
+  background: rgba(10, 17, 30, 0.85);
+
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-name small {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 16px;
+
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.auth-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  width: min(420px, 100%);
+  max-height: 100%;
+  padding: 22px;
+
+  overflow-y: auto;
+
+  background: rgb(10, 17, 30);
+
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
+
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+
+  color: white;
+}
+
+.auth-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.auth-header h2 {
+  font-size: 21px;
+}
+
+.auth-close {
+  width: 34px;
+  height: 34px;
+
+  background: none;
+
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+
+  color: white;
+  font-size: 21px;
+  line-height: 1;
+
+  cursor: pointer;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.auth-form input {
+  height: 44px;
+  padding: 0 12px;
+
+  background: rgba(255, 255, 255, 0.06);
+
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+
+  color: white;
+  font: inherit;
+  font-size: 15px;
+}
+
+.auth-primary,
+.auth-secondary {
+  min-height: 44px;
+  padding: 8px 14px;
+
+  border-radius: 10px;
+
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.auth-primary {
+  background: white;
+  border: 1px solid white;
+  color: #0a111e;
+}
+
+.auth-secondary {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: white;
+}
+
+.auth-primary:disabled,
+.auth-secondary:disabled,
+.auth-role:disabled,
+.account-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auth-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.auth-links button {
+  padding: 0;
+
+  background: none;
+  border: none;
+
+  color: #74c0fc;
+  font: inherit;
+  font-size: 13px;
+
+  cursor: pointer;
+}
+
+.auth-message {
+  padding: 9px 11px;
+
+  border-radius: 10px;
+
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.auth-message.is-error {
+  background: rgba(250, 82, 82, 0.14);
+  border: 1px solid rgba(250, 82, 82, 0.4);
+}
+
+.auth-message.is-info {
+  background: rgba(77, 171, 247, 0.14);
+  border: 1px solid rgba(77, 171, 247, 0.4);
+}
+
+.auth-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.auth-roles {
+  display: grid;
+  gap: 10px;
+}
+
+.auth-role {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+
+  padding: 13px 14px;
+
+  background: rgba(255, 255, 255, 0.06);
+
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+
+  color: white;
+  font: inherit;
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.auth-role:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.auth-role span {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.auth-dialog button:focus-visible,
+.auth-dialog input:focus-visible,
+.account-button:focus-visible {
+  outline: 2px solid rgba(77, 171, 247, 0.9);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .account-signed-in {
+    top: auto;
+    left: 12px;
+    bottom: 34px;
+  }
+
+  .world-globe:has(.country-card) .account-signed-in {
+    display: none;
+  }
+}

@@ -8,9 +8,11 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "data:build": "node scripts/build-country-data.mjs"
+    "data:build": "node scripts/build-country-data.mjs",
+    "data:quiz": "node scripts/build-quiz-seed.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "@turf/turf": "^7.4.0",
     "globe.gl": "^2.46.2",
     "react": "^19.2.8",

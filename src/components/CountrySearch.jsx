@@ -1,9 +1,10 @@
 import { useId, useMemo, useRef, useState } from "react";
 import { getCountryName, searchCountries } from "../data/countries";
 import { useI18n } from "../i18n/useI18n";
+import AccountControls from "./AccountControls";
 import "./CountrySearch.css";
 
-function CountrySearch({ countries, onSelect }) {
+function CountrySearch({ countries, onSelect, onOpenQuiz, onOpenClassroom }) {
   const { lang, setLang, t, place } = useI18n();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -122,6 +123,8 @@ function CountrySearch({ countries, onSelect }) {
         <span className={lang === "vi" ? "is-current" : ""}>VI</span>
         <span className={lang === "en" ? "is-current" : ""}>EN</span>
       </button>
+
+      <AccountControls onOpenQuiz={onOpenQuiz} onOpenClassroom={onOpenClassroom} />
     </div>
   );
 }

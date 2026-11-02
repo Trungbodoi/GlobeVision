@@ -15,12 +15,16 @@ import {
 import { getCountryInfo } from "../services/countryApi";
 import { loadCountries } from "../data/countries";
 import { COMPARE_COLORS, MAX_COMPARE } from "../data/compare";
+import { isLocateKind } from "../data/quiz";
 import { useI18n } from "../i18n/useI18n";
 
 import CountryCard from "./CountryCard";
 import CountrySearch from "./CountrySearch";
 import CompareTray from "./CompareTray";
 import ComparePanel from "./ComparePanel";
+import QuizPanel from "./QuizPanel";
+import ClassroomPanel from "./ClassroomPanel";
+import { MasteryPanel, TourPlayer } from "./GuidedPanels";
 import "./WorldGlobe.css";
 
 // Chiều rộng thẻ thông tin + lề (xem CountryCard.css).
@@ -58,6 +62,15 @@ function WorldGlobe({ onProgress, onLoaded }) {
   const [retryCount, setRetryCount] = useState(0);
   const [compareIds, setCompareIds] = useState([]);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [quizOpen, setQuizOpen] = useState(false);
+  const [quizAssignment, setQuizAssignment] = useState(null);
+  const [classroomOpen, setClassroomOpen] = useState(false);
+  const [masteryOpen, setMasteryOpen] = useState(false);
+  const [mastery, setMastery] = useState(null);
+  const [tour, setTour] = useState(null);
+  // Dạng câu hỏi đang làm, "review" khi xem lại, null khi không làm quiz.
+  const [quizKind, setQuizKind] = useState(null);
+  const [quizPick, setQuizPick] = useState(null);
 
   const globeRef = useRef();
   const globeInstanceRef = useRef(null);
@@ -66,8 +79,12 @@ function WorldGlobe({ onProgress, onLoaded }) {
     selectedId: null,
     neighborIds: new Set(),
     compareColors: new Map(),
+    quizOpen: false,
+    quizPick: null,
+    mastery: null,
   });
   const langRef = useRef(lang);
+  const quizKindRef = useRef(null);
 
   // Chọn quốc gia từ thao tác người dùng (bấm trên địa cầu, tìm kiếm,
   // bấm nước láng giềng): cập nhật URL để có thể chia sẻ và Back.
@@ -103,6 +120,7 @@ function WorldGlobe({ onProgress, onLoaded }) {
   );
 
   const closeCompare = useCallback(() => setCompareOpen(false), []);
+  const closeClassroom = useCallback(() => setClassroomOpen(false), []);
 
   // ----------------------------------------------------------------
   // Khởi tạo địa cầu (chạy một lần)
@@ -118,10 +136,16 @@ function WorldGlobe({ onProgress, onLoaded }) {
     let disposed = false;
 
     function applyColors() {
-      const { hoverId, selectedId: current, neighborIds, compareColors } = highlightRef.current;
+      const { hoverId, selectedId: current, neighborIds, compareColors, quizOpen, quizPick, mastery } =
+        highlightRef.current;
 
       globe?.polygonCapColor(({ properties }) => {
         if (properties.id === hoverId) return COLORS.hover;
+        if (mastery) return mastery.get(properties.id)?.color ?? COLORS.default;
+
+        // Trong quiz chỉ tô nước đang chọn để không gợi ý đáp án.
+        if (quizOpen) return properties.id === quizPick ? COLORS.selected : COLORS.default;
+
         if (compareColors.has(properties.id)) return compareColors.get(properties.id);
         if (properties.id === current) return COLORS.selected;
         if (neighborIds.has(properties.id)) return COLORS.neighbor;
@@ -206,7 +230,12 @@ function WorldGlobe({ onProgress, onLoaded }) {
           .polygonStrokeColor(() => "rgba(0,0,0,0)")
           .polygonAltitude(0.01)
           .polygonLabel(({ properties }) => {
-            const name = langRef.current === "en" ? properties.nameEn : properties.nameVi;
+            // Tên nước sẽ làm lộ đáp án khi đang làm bài.
+            if (quizKindRef.current && quizKindRef.current !== "review") return "";
+
+            const baseName = langRef.current === "en" ? properties.nameEn : properties.nameVi;
+            const percent = highlightRef.current.mastery?.get(properties.id)?.percent;
+            const name = percent == null ? baseName : `${baseName}: ${percent}%`;
 
             return `
               <div style="
@@ -221,6 +250,12 @@ function WorldGlobe({ onProgress, onLoaded }) {
             `;
           })
           .onPolygonClick((feature) => {
+            if (quizKindRef.current) {
+              if (isLocateKind(quizKindRef.current)) setQuizPick(feature.properties.id);
+
+              return;
+            }
+
             selectCountry(feature.properties.id);
           })
           .onPolygonHover((feature) => {
@@ -348,6 +383,8 @@ function WorldGlobe({ onProgress, onLoaded }) {
     return () => window.removeEventListener("popstate", handlePopState);
   }, [countryData, compareIds]);
 
+  const guided = quizOpen || masteryOpen || Boolean(tour);
+
   const selectedCountry = selectedId ? countryData?.byId.get(selectedId) ?? null : null;
 
   // ----------------------------------------------------------------
@@ -413,34 +450,124 @@ function WorldGlobe({ onProgress, onLoaded }) {
 
   // Tô màu quốc gia đang chọn, các nước láng giềng và các nước đang so sánh
   useEffect(() => {
-    highlightRef.current.selectedId = selectedId;
+    highlightRef.current.selectedId = guided ? null : selectedId;
+    highlightRef.current.quizOpen = quizOpen || Boolean(tour);
+    highlightRef.current.quizPick = quizPick;
+    highlightRef.current.mastery = masteryOpen ? mastery : null;
     highlightRef.current.neighborIds = new Set(neighbors.map((country) => country.id));
     highlightRef.current.compareColors = new Map(
       compareIds.map((id, index) => [id, COMPARE_COLORS[index]])
     );
     globeInstanceRef.current?.applyColors();
-  }, [selectedId, neighbors, compareIds]);
+  }, [selectedId, neighbors, compareIds, guided, quizOpen, tour, quizPick, masteryOpen, mastery]);
 
   // Co giãn vùng vẽ khi mở/đóng thẻ thông tin
   useEffect(() => {
     globeInstanceRef.current?.fitGlobe();
-  }, [selectedId, countryData]);
+  }, [selectedId, countryData, guided]);
 
   // Nhãn khi rê chuột theo ngôn ngữ hiện tại
   useEffect(() => {
     langRef.current = lang;
-  }, [lang]);
+    quizKindRef.current = quizKind;
+  }, [lang, quizKind]);
+
+  function openQuiz() {
+    closeCountry();
+    setCompareOpen(false);
+    setQuizOpen(true);
+  }
+
+  function openClassroom() {
+    closeCountry();
+    setCompareOpen(false);
+    setClassroomOpen(true);
+  }
+
+  function startAssignedQuiz(assignment) {
+    setClassroomOpen(false);
+    setQuizAssignment(assignment);
+    setQuizOpen(true);
+  }
+
+  function closeQuiz() {
+    setQuizOpen(false);
+    setQuizAssignment(null);
+    setQuizKind(null);
+    setQuizPick(null);
+  }
+
+  const reviewCountry = useCallback(
+    (id) => {
+      const country = countryData?.byId.get(id);
+
+      setQuizPick(id);
+
+      if (country) {
+        globeInstanceRef.current?.globe.pointOfView(
+          { lat: country.labelLat, lng: country.labelLng, altitude: altitudeFor(country) },
+          1000
+        );
+      }
+    },
+    [countryData]
+  );
+
+  function openMastery() {
+    closeQuiz();
+    setQuizKind("review");
+    setMasteryOpen(true);
+  }
+
+  function closeMastery() {
+    setMasteryOpen(false);
+    setMastery(null);
+    setQuizKind(null);
+    setQuizPick(null);
+  }
+
+  function startTour(nextTour) {
+    setClassroomOpen(false);
+    setQuizKind("review");
+    setTour(nextTour);
+  }
+
+  function closeTour() {
+    setTour(null);
+    setQuizKind(null);
+    setQuizPick(null);
+  }
 
   return (
     <div className="world-globe">
       {/* Globe */}
       <div ref={globeRef} className="world-globe-canvas" />
 
-      {countryData && <CountrySearch countries={countryData.list} onSelect={selectCountry} />}
+      {countryData && !guided && !classroomOpen && (
+        <CountrySearch
+          countries={countryData.list}
+          onSelect={selectCountry}
+          onOpenQuiz={openQuiz}
+          onOpenClassroom={openClassroom}
+        />
+      )}
+
+      {quizOpen && (
+        <QuizPanel
+          key={quizAssignment?.id ?? "personal"}
+          assignment={quizAssignment}
+          pick={quizPick}
+          onPick={setQuizPick}
+          onKindChange={setQuizKind}
+          onReview={reviewCountry}
+          onClose={closeQuiz}
+          onOpenMastery={openMastery}
+        />
+      )}
 
       {/* Country Card */}
       <CountryCard
-        country={selectedCountry}
+        country={guided ? null : selectedCountry}
         details={currentDetails}
         loading={loadingDetails}
         neighbors={neighbors}
@@ -451,8 +578,35 @@ function WorldGlobe({ onProgress, onLoaded }) {
         onToggleCompare={toggleCompare}
       />
 
+      {masteryOpen && (
+        <MasteryPanel
+          byId={countryData.byId}
+          onData={setMastery}
+          onFocus={reviewCountry}
+          onClose={closeMastery}
+        />
+      )}
+
+      {tour && (
+        <TourPlayer
+          tour={tour}
+          byId={countryData.byId}
+          onStop={reviewCountry}
+          onClose={closeTour}
+        />
+      )}
+
+      {classroomOpen && (
+        <ClassroomPanel
+          countries={countryData.list}
+          onStartTour={startTour}
+          onClose={closeClassroom}
+          onStartAssignment={startAssignedQuiz}
+        />
+      )}
+
       <CompareTray
-        countries={compareCountries}
+        countries={guided ? [] : compareCountries}
         onRemove={(id) => updateCompare(compareIds.filter((item) => item !== id))}
         onClear={() => updateCompare([])}
         onOpen={() => setCompareOpen(true)}

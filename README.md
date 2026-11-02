@@ -11,6 +11,10 @@ Bản chạy thử: https://trungbodoi.github.io/GlobeVision/
 - **Thẻ thông tin quốc gia:** quốc kỳ, thủ đô, giờ địa phương tại thủ đô, dân số, diện tích, mật độ dân số, khu vực, tiền tệ, ngôn ngữ, múi giờ, mã điện thoại, tên bản địa.
 - **Quốc gia láng giềng:** liệt kê và tô sáng trên địa cầu; bấm để chuyển sang nước đó.
 - **So sánh tối đa 3 quốc gia:** bấm "+ So sánh" trên thẻ thông tin; bảng so sánh gồm biểu đồ cột (dân số, diện tích, mật độ) và bảng số liệu; các nước được tô màu tương ứng trên địa cầu. Chia sẻ bằng liên kết dạng `?compare=VN,JP,FR`.
+- **Quiz địa lý (cần đăng nhập):** tìm nước trên địa cầu, nhận biết quốc kỳ, đoán thủ đô; lọc theo khu vực; máy chủ phát đề, chấm điểm và lưu lịch sử.
+- **Lớp học (cần đăng nhập):** giáo viên tạo lớp, giao bài có hạn nộp và số lần làm, xem bảng điểm, xuất CSV; học sinh vào lớp bằng mã lớp và làm bài được giao.
+- **Câu hỏi và thống kê cho giáo viên:** xem trước và đổi câu trước khi giao, kho câu hỏi tự tạo, gia hạn, cấp lại lượt làm, tỉ lệ đúng theo từng câu.
+- **Công cụ học cho học sinh:** bản đồ thành thạo, ôn tập ngắt quãng các nước hay sai, tour khám phá do giáo viên tạo.
 - **Chia sẻ liên kết:** quốc gia đang xem nằm trên URL (vd. `?country=VN`), dùng được nút Back/Forward và nút "Sao chép liên kết".
 - **Hoạt động ổn định khi API lỗi:** dữ liệu đã tải được lưu lại; khi mất kết nối, ứng dụng hiển thị dữ liệu đã lưu hoặc dữ liệu cơ bản từ bản đồ, kèm nút "Thử lại".
 - **Tiếng Việt / English:** chuyển ngôn ngữ bằng nút VI/EN, lựa chọn được ghi nhớ.
@@ -39,6 +43,20 @@ Các lệnh khác:
 | `npm run preview` | Chạy thử bản đã build |
 | `npm run lint` | Kiểm tra code bằng ESLint |
 | `npm run data:build` | Tạo lại dữ liệu quốc gia chuẩn hóa (xem bên dưới) |
+| `npm run data:quiz` | Tạo lại migration dữ liệu quiz từ API countries.dev |
+
+## Backend (Supabase)
+
+Phần tra cứu địa cầu chạy được mà không cần backend. Nút đăng nhập chỉ hiện khi đã cấu hình Supabase.
+
+1. Tạo project trên [Supabase](https://supabase.com).
+2. Trong SQL Editor, chạy lần lượt các file trong `supabase/migrations/` theo thứ tự tên file.
+3. Sao chép `.env.example` thành `.env.local`, điền URL và anon key lấy từ Project Settings > API.
+4. Trong Authentication > URL Configuration, đặt Site URL và thêm `http://localhost:5173/GlobeVision/**` cùng địa chỉ website thật vào Redirect URLs.
+
+Khi triển khai, thêm `VITE_SUPABASE_URL` và `VITE_SUPABASE_ANON_KEY` vào GitHub: Settings > Secrets and variables > Actions > Variables.
+
+Mỗi người chọn vai trò giáo viên hoặc học sinh một lần sau lần đăng nhập đầu tiên. Muốn đổi vai trò, quản trị viên sửa cột `role` của bảng `profiles` trên Supabase.
 
 ## Dữ liệu
 
