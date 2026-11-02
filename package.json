@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "data:build": "node scripts/build-country-data.mjs"
+    "data:build": "node scripts/build-country-data.mjs",
+    "data:quiz": "node scripts/build-quiz-seed.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",

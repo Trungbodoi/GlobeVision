@@ -11,6 +11,7 @@ Bản chạy thử: https://trungbodoi.github.io/GlobeVision/
 - **Thẻ thông tin quốc gia:** quốc kỳ, thủ đô, giờ địa phương tại thủ đô, dân số, diện tích, mật độ dân số, khu vực, tiền tệ, ngôn ngữ, múi giờ, mã điện thoại, tên bản địa.
 - **Quốc gia láng giềng:** liệt kê và tô sáng trên địa cầu; bấm để chuyển sang nước đó.
 - **So sánh tối đa 3 quốc gia:** bấm "+ So sánh" trên thẻ thông tin; bảng so sánh gồm biểu đồ cột (dân số, diện tích, mật độ) và bảng số liệu; các nước được tô màu tương ứng trên địa cầu. Chia sẻ bằng liên kết dạng `?compare=VN,JP,FR`.
+- **Quiz địa lý (cần đăng nhập):** tìm nước trên địa cầu, nhận biết quốc kỳ, đoán thủ đô; lọc theo khu vực; máy chủ phát đề, chấm điểm và lưu lịch sử.
 - **Chia sẻ liên kết:** quốc gia đang xem nằm trên URL (vd. `?country=VN`), dùng được nút Back/Forward và nút "Sao chép liên kết".
 - **Hoạt động ổn định khi API lỗi:** dữ liệu đã tải được lưu lại; khi mất kết nối, ứng dụng hiển thị dữ liệu đã lưu hoặc dữ liệu cơ bản từ bản đồ, kèm nút "Thử lại".
 - **Tiếng Việt / English:** chuyển ngôn ngữ bằng nút VI/EN, lựa chọn được ghi nhớ.
@@ -39,6 +40,7 @@ Các lệnh khác:
 | `npm run preview` | Chạy thử bản đã build |
 | `npm run lint` | Kiểm tra code bằng ESLint |
 | `npm run data:build` | Tạo lại dữ liệu quốc gia chuẩn hóa (xem bên dưới) |
+| `npm run data:quiz` | Tạo lại migration dữ liệu quiz từ API countries.dev |
 
 ## Backend (Supabase)
 

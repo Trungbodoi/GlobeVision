@@ -281,7 +281,7 @@ function NewPasswordDialog() {
   );
 }
 
-function AccountControls() {
+function AccountControls({ onOpenQuiz }) {
   const { t } = useI18n();
   const { enabled, loading, user, profile, profileError, recovering, reloadProfile } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -310,6 +310,12 @@ function AccountControls() {
           {loading ? "…" : profile?.display_name}
           {profile?.role && <small>{t(`auth.role.${profile.role}`)}</small>}
         </span>
+      )}
+
+      {profile?.role && (
+        <button type="button" className="account-button" onClick={onOpenQuiz}>
+          {t("quiz.title")}
+        </button>
       )}
 
       <button type="button" className="account-button" onClick={() => supabase.auth.signOut()}>

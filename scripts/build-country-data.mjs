@@ -27,6 +27,35 @@ const NAME_EN_FIXES = {
   CN: "China",
 };
 
+// Tên tiếng Việt thông dụng thay cho tên gốc Pháp hoặc tên đầy đủ.
+const NAME_VI_FIXES = {
+  BA: "Bosnia và Herzegovina",
+  BJ: "Benin",
+  BR: "Brazil",
+  CV: "Cape Verde",
+  CY: "Síp",
+  CZ: "Séc",
+  DZ: "Algeria",
+  GB: "Vương quốc Anh",
+  GE: "Georgia",
+  GN: "Guinea",
+  GW: "Guinea-Bissau",
+  IE: "Ireland",
+  KP: "Triều Tiên",
+  LB: "Li-băng",
+  MA: "Ma-rốc",
+  MM: "Myanmar",
+  MR: "Mauritania",
+  MX: "Mexico",
+  NC: "New Caledonia",
+  PF: "Polynesia thuộc Pháp",
+  SA: "Ả Rập Xê-út",
+  SN: "Senegal",
+  TD: "Chad",
+  TN: "Tunisia",
+  ZA: "Nam Phi",
+};
+
 // Các vùng có vị thế chính trị hoặc ranh giới đang tranh chấp.
 // Dùng để hiển thị một ghi chú trung lập trên thẻ thông tin.
 // (Không dùng trường TYPE của Natural Earth vì trường này gắn nhãn
@@ -152,7 +181,7 @@ function normalizeCountry(feature) {
   const id = iso2 || adm0;
 
   const nameEn = NAME_EN_FIXES[id] || clean(p.name_en) || clean(p.name) || clean(p.admin);
-  const nameVi = clean(p.name_vi) || nameEn;
+  const nameVi = NAME_VI_FIXES[id] || clean(p.name_vi) || nameEn;
 
   return {
     type: "Feature",
