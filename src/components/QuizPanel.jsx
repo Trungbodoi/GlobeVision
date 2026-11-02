@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
-import { getQuizHistory, startQuiz, submitQuiz } from "../services/quizApi";
+import {
+  getQuizHistory,
+  getReviewDueCount,
+  startQuiz,
+  startReview,
+  submitQuiz,
+} from "../services/quizApi";
 import { startAssignment } from "../services/classroomApi";
-import { REGIONS, QUIZ_KINDS as KINDS } from "../data/quiz";
+import { REGIONS, QUIZ_KINDS as KINDS, isLocateKind } from "../data/quiz";
 import { numberLocale } from "../utils/format";
 import "./QuizPanel.css";
 
@@ -10,16 +16,23 @@ function localized(item, prefix, lang) {
   return item[`${prefix}name_${lang}`];
 }
 
-function Setup({ onStart, onClose }) {
+function Setup({ onStart, onClose, onOpenMastery }) {
   const { lang, t, place } = useI18n();
   const [region, setRegion] = useState("");
   const [kinds, setKinds] = useState(KINDS);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const [history, setHistory] = useState([]);
+  const [dueCount, setDueCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+
+    getReviewDueCount()
+      .then((count) => {
+        if (!cancelled) setDueCount(count);
+      })
+      .catch(() => {});
 
     getQuizHistory()
       .then((rows) => {
@@ -38,12 +51,12 @@ function Setup({ onStart, onClose }) {
     );
   }
 
-  async function handleStart() {
+  async function handleStart(request = () => startQuiz({ region: region || null, kinds })) {
     setBusy(true);
     setFailed(false);
 
     try {
-      onStart(await startQuiz({ region: region || null, kinds }));
+      onStart(await request());
     } catch {
       setFailed(true);
       setBusy(false);
@@ -91,10 +104,20 @@ function Setup({ onStart, onClose }) {
         <button
           type="button"
           className="quiz-primary"
-          onClick={handleStart}
+          onClick={() => handleStart()}
           disabled={busy || kinds.length === 0}
         >
           {t("quiz.start")}
+        </button>
+
+        {dueCount > 0 && (
+          <button type="button" className="quiz-secondary" disabled={busy} onClick={() => handleStart(startReview)}>
+            {t("quiz.review", { count: dueCount })}
+          </button>
+        )}
+
+        <button type="button" className="quiz-secondary" onClick={onOpenMastery}>
+          {t("mastery.title")}
         </button>
 
         {history.length > 0 && (
@@ -131,7 +154,8 @@ function Playing({ quiz, pick, onPick, onKindChange, onFinished, onClose }) {
 
   const question = quiz.questions[index];
   const isLast = index === quiz.questions.length - 1;
-  const hasAnswer = question.kind === "locate" ? Boolean(pick) : optionIndex !== null;
+  const isLocate = isLocateKind(question.kind);
+  const hasAnswer = isLocate ? Boolean(pick) : optionIndex !== null;
 
   async function submit(allAnswers) {
     setSubmitting(true);
@@ -147,7 +171,7 @@ function Playing({ quiz, pick, onPick, onKindChange, onFinished, onClose }) {
 
   function goNext() {
     const answer =
-      question.kind === "locate"
+      isLocate
         ? { question_id: question.id, answer_id: pick }
         : { question_id: question.id, option_index: optionIndex };
     const allAnswers = hasAnswer ? [...answers, answer] : answers;
@@ -179,6 +203,7 @@ function Playing({ quiz, pick, onPick, onKindChange, onFinished, onClose }) {
         {question.kind === "locate" && t("quiz.prompt.locate", { name })}
         {question.kind === "capital" && t("quiz.prompt.capital", { name })}
         {question.kind === "flag" && t("quiz.prompt.flag")}
+        {question.kind.startsWith("custom") && question.prompt}
       </h2>
 
       {question.kind === "flag" && (
@@ -189,7 +214,7 @@ function Playing({ quiz, pick, onPick, onKindChange, onFinished, onClose }) {
         />
       )}
 
-      {question.kind === "locate" ? (
+      {isLocate ? (
         <p className="quiz-hint">{t(pick ? "quiz.locatePicked" : "quiz.locateHint")}</p>
       ) : (
         <div className="quiz-options">
@@ -227,6 +252,7 @@ function Result({ result, onReview, onAgain, onClose }) {
 
   const display = (row, prefix) => {
     if (row.kind === "capital") return row[`${prefix}capital`];
+    if (row.kind === "custom_choice") return row[prefix === "answer_" ? "answer_label" : "correct_label"];
 
     return localized(row, prefix, lang);
   };
@@ -247,11 +273,13 @@ function Result({ result, onReview, onAgain, onClose }) {
       <ol className="quiz-review">
         {result.review.map((row) => (
           <li key={row.position}>
-            <button type="button" onClick={() => onReview(row.target_id)}>
+            <button type="button" onClick={() => row.target_id && onReview(row.target_id)}>
               <span className={row.is_correct ? "quiz-mark is-correct" : "quiz-mark is-wrong"}>
                 {row.is_correct ? t("quiz.correct") : t("quiz.wrong")}
               </span>
-              <strong>{localized(row, "target_", lang)}</strong>
+              <strong>{row.prompt || localized(row, "target_", lang)}</strong>
+              {row.kind === "custom_choice" && <span>{t("class.correctAnswer", { answer: row.correct_label })}</span>}
+              {row.kind === "custom_locate" && <span>{t("class.correctAnswer", { answer: localized(row, "target_", lang) })}</span>}
               {row.kind === "capital" && <span>{t("quiz.capitalIs", { capital: row.target_capital })}</span>}
               {!row.is_correct && (
                 <span>{t("quiz.yourAnswer", { answer: display(row, "answer_") || "—" })}</span>
@@ -318,7 +346,7 @@ function AssignmentLoader({ assignment, onStart, onClose }) {
   );
 }
 
-function QuizPanel({ assignment, pick, onPick, onKindChange, onReview, onClose }) {
+function QuizPanel({ assignment, pick, onPick, onKindChange, onReview, onClose, onOpenMastery }) {
   const [stage, setStage] = useState({ name: assignment ? "assignment" : "setup" });
 
   if (stage.name === "assignment") {
@@ -338,6 +366,7 @@ function QuizPanel({ assignment, pick, onPick, onKindChange, onReview, onClose }
     return (
       <Setup
         onClose={onClose}
+        onOpenMastery={onOpenMastery}
         onStart={(quiz) => {
           onKindChange(quiz.questions[0].kind);
           setStage({ name: "playing", quiz });

@@ -335,3 +335,86 @@
   outline: 2px solid rgba(77, 171, 247, 0.9);
   outline-offset: 2px;
 }
+
+.class-tag {
+  display: inline-block;
+
+  padding: 1px 8px;
+
+  background: rgba(255, 255, 255, 0.14);
+
+  border-radius: 999px;
+
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+}
+
+.class-tag.is-warning {
+  background: rgba(255, 192, 67, 0.25);
+}
+
+.class-row-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 10px;
+}
+
+.class-questions {
+  counter-reset: question;
+}
+
+.class-stat {
+  flex-shrink: 0;
+
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.class-option-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.class-option-row input:not([type="radio"]) {
+  flex: 1;
+  min-width: 0;
+}
+
+.class-stop {
+  padding: 10px;
+
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px;
+}
+
+.class-body textarea {
+  padding: 8px 11px;
+
+  background: rgb(26, 33, 46);
+
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+
+  color: white;
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.account-badge {
+  display: inline-block;
+
+  min-width: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+
+  background: #ffc043;
+
+  border-radius: 999px;
+
+  color: #0a111e;
+  font-size: 11px;
+  line-height: 18px;
+}

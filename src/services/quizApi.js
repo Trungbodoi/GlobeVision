@@ -28,3 +28,7 @@ export function getQuizHistory(limit = 5) {
       .limit(limit)
   );
 }
+
+export const getMyMastery = () => unwrap(supabase.rpc("my_mastery"));
+export const getReviewDueCount = () => unwrap(supabase.rpc("review_due_count"));
+export const startReview = () => unwrap(supabase.rpc("start_review", { p_count: 10 }));

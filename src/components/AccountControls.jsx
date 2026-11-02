@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useAuth } from "../auth/useAuth";
 import { useI18n } from "../i18n/useI18n";
 import { supabase } from "../lib/supabase";
+import { getMyAssignments } from "../services/classroomApi";
 import "./AccountControls.css";
 
 function authErrorKey(error) {
@@ -281,6 +282,37 @@ function NewPasswordDialog() {
   );
 }
 
+function PendingBadge() {
+  const { t } = useI18n();
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getMyAssignments()
+      .then((rows) => {
+        const now = new Date();
+
+        if (!cancelled) {
+          setCount(rows.filter((row) => row.started === 0 && new Date(row.due_at) > now).length);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (count === 0) return null;
+
+  return (
+    <span className="account-badge" title={t("class.pendingBadge", { count })}>
+      {count}
+    </span>
+  );
+}
+
 function AccountControls({ onOpenQuiz, onOpenClassroom }) {
   const { t } = useI18n();
   const { enabled, loading, user, profile, profileError, recovering, reloadProfile } = useAuth();
@@ -316,6 +348,7 @@ function AccountControls({ onOpenQuiz, onOpenClassroom }) {
         <>
           <button type="button" className="account-button" onClick={onOpenClassroom}>
             {t("class.title")}
+            {profile.role === "student" && <PendingBadge />}
           </button>
           <button type="button" className="account-button" onClick={onOpenQuiz}>
             {t("quiz.title")}

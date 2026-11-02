@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
+import { useLoad } from "../hooks/useLoad";
 import { useAuth } from "../auth/useAuth";
 import { useI18n } from "../i18n/useI18n";
 import {
   createAssignment,
+  deleteTour,
+  getAssignmentStats,
+  grantAttempt,
+  listTours,
+  rotateJoinCode,
   createClass,
   deleteAssignment,
   deleteClass,
@@ -17,33 +23,12 @@ import {
 } from "../services/classroomApi";
 import { numberLocale } from "../utils/format";
 import { REGIONS, QUIZ_KINDS } from "../data/quiz";
+import { questionText } from "../utils/quizText";
+import AssignmentEditor, { AssignmentSettings } from "./AssignmentEditor";
+import { LoadState } from "./ClassroomParts";
+import QuestionBank from "./QuestionBank";
+import TourEditor from "./TourEditor";
 import "./ClassroomPanel.css";
-
-// Tải dữ liệu theo khóa; gọi reload() để tải lại sau khi thay đổi.
-function useLoad(loader) {
-  const [state, setState] = useState({ loaded: false, data: null, failed: false });
-  const [version, setVersion] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    loader()
-      .then((data) => {
-        if (!cancelled) setState({ loaded: true, data, failed: false });
-      })
-      .catch(() => {
-        if (!cancelled) setState({ loaded: true, data: null, failed: true });
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [loader, version]);
-
-  const reload = useCallback(() => setVersion((value) => value + 1), []);
-
-  return { ...state, reload };
-}
 
 function useFormatDate() {
   const { lang } = useI18n();
@@ -53,25 +38,6 @@ function useFormatDate() {
       dateStyle: "short",
       timeStyle: "short",
     });
-}
-
-function LoadState({ state, children }) {
-  const { t } = useI18n();
-
-  if (!state.loaded) return <p className="class-muted">{t("card.loading")}</p>;
-
-  if (state.failed) {
-    return (
-      <p className="class-error" role="status">
-        {t("auth.errorGeneric")}{" "}
-        <button type="button" className="class-link" onClick={state.reload}>
-          {t("card.retry")}
-        </button>
-      </p>
-    );
-  }
-
-  return children;
 }
 
 // Chặn công thức khi mở bằng Excel (tên do người dùng tự đặt).
@@ -96,8 +62,12 @@ function downloadCsv(filename, rows) {
   URL.revokeObjectURL(url);
 }
 
-function Gradebook({ assignment, onBack }) {
-  const { t } = useI18n();
+function Gradebook({ assignment: initial, onBack, onChanged }) {
+  const { lang, t } = useI18n();
+  const [assignment, setAssignment] = useState(initial);
+  const [failed, setFailed] = useState(false);
+  const statsLoader = useCallback(() => getAssignmentStats(initial.id), [initial.id]);
+  const stats = useLoad(statsLoader);
   const formatDate = useFormatDate();
   const loader = useCallback(() => getGradebook(assignment.id), [assignment.id]);
   const state = useLoad(loader);
@@ -143,6 +113,7 @@ function Gradebook({ assignment, onBack }) {
                     <th scope="col">{t("class.status")}</th>
                     <th scope="col">{t("class.score")}</th>
                     <th scope="col">{t("class.submittedAt")}</th>
+                    <th scope="col">{t("class.attemptsCol")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -152,6 +123,27 @@ function Gradebook({ assignment, onBack }) {
                       <td>{status(row)}</td>
                       <td>{row.best_score != null ? `${row.best_score}/${row.total}` : "—"}</td>
                       <td>{row.last_submitted_at ? formatDate(row.last_submitted_at) : "—"}</td>
+                      <td>
+                        {row.started}/{assignment.max_attempts}{" "}
+                        {row.started > 0 && (
+                          <button
+                            type="button"
+                            className="class-link"
+                            onClick={async () => {
+                              setFailed(false);
+
+                              try {
+                                await grantAttempt(assignment.id, row.student_id);
+                                state.reload();
+                              } catch {
+                                setFailed(true);
+                              }
+                            }}
+                          >
+                            {t("class.grantAttempt")}
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -163,6 +155,32 @@ function Gradebook({ assignment, onBack }) {
           </>
         )}
       </LoadState>
+
+      {failed && <p className="class-error" role="status">{t("auth.errorGeneric")}</p>}
+
+      <h4>{t("class.statsTitle")}</h4>
+      <LoadState state={stats}>
+        <ul className="class-list">
+          {(stats.data ?? []).map((item) => (
+            <li key={item.id}>
+              <span className="class-row-text">{questionText(item, lang, t)}</span>
+              <strong className="class-stat">
+                {item.answered > 0
+                  ? t("class.statValue", { correct: item.correct, answered: item.answered })
+                  : "—"}
+              </strong>
+            </li>
+          ))}
+        </ul>
+      </LoadState>
+
+      <AssignmentSettings
+        assignment={assignment}
+        onSaved={(saved) => {
+          setAssignment(saved);
+          onChanged();
+        }}
+      />
     </>
   );
 }
@@ -192,7 +210,7 @@ function AssignmentForm({ classId, onCreated }) {
     setFailed(false);
 
     try {
-      await createAssignment({
+      const created = await createAssignment({
         classId,
         title,
         region: region || null,
@@ -202,7 +220,7 @@ function AssignmentForm({ classId, onCreated }) {
         dueAt: new Date(dueAt).toISOString(),
       });
       setTitle("");
-      onCreated();
+      onCreated(created);
     } catch {
       setFailed(true);
     } finally {
@@ -268,15 +286,18 @@ function AssignmentForm({ classId, onCreated }) {
       {failed && <p className="class-error" role="status">{t("class.assignmentError")}</p>}
 
       <button type="submit" className="class-primary" disabled={busy || kinds.length === 0}>
-        {t("class.assign")}
+        {t("class.createDraft")}
       </button>
     </form>
   );
 }
 
-function TeacherClass({ classItem, onBack, onDeleted }) {
+function TeacherClass({ classItem: initialClass, onBack, onDeleted, countries, onStartTour }) {
   const { t } = useI18n();
   const formatDate = useFormatDate();
+  const [classItem, setClassItem] = useState(initialClass);
+  const toursLoader = useCallback(() => listTours(initialClass.id), [initialClass.id]);
+  const tours = useLoad(toursLoader);
   const rosterLoader = useCallback(() => getRoster(classItem.id), [classItem.id]);
   const assignmentLoader = useCallback(() => listAssignments(classItem.id), [classItem.id]);
   const roster = useLoad(rosterLoader);
@@ -296,7 +317,29 @@ function TeacherClass({ classItem, onBack, onDeleted }) {
     }
   }
 
-  if (selected) return <Gradebook assignment={selected} onBack={() => setSelected(null)} />;
+  if (selected?.published) {
+    return (
+      <Gradebook
+        assignment={selected}
+        onChanged={assignments.reload}
+        onBack={() => setSelected(null)}
+      />
+    );
+  }
+
+  if (selected) {
+    return (
+      <AssignmentEditor
+        assignment={selected}
+        onChanged={assignments.reload}
+        onBack={() => setSelected(null)}
+        onPublished={() => {
+          assignments.reload();
+          setSelected(null);
+        }}
+      />
+    );
+  }
 
   return (
     <>
@@ -318,6 +361,20 @@ function TeacherClass({ classItem, onBack, onDeleted }) {
           }}
         >
           {copied ? t("card.shared") : t("class.copyCode")}
+        </button>{" "}
+        <button
+          type="button"
+          className="class-link"
+          onClick={() => {
+            if (window.confirm(t("class.confirmRotate"))) {
+              act(async () => {
+                setClassItem(await rotateJoinCode(classItem.id));
+                setCopied(false);
+              });
+            }
+          }}
+        >
+          {t("class.rotateCode")}
         </button>
       </p>
 
@@ -330,7 +387,9 @@ function TeacherClass({ classItem, onBack, onDeleted }) {
             {assignments.data.map((item) => (
               <li key={item.id}>
                 <button type="button" className="class-row" onClick={() => setSelected(item)}>
-                  <strong>{item.title}</strong>
+                  <strong>
+                    {item.title} {!item.published && <span className="class-tag">{t("class.draft")}</span>}
+                  </strong>
                   <span>{t("class.due", { date: formatDate(item.due_at) })}</span>
                 </button>
                 <button
@@ -352,7 +411,43 @@ function TeacherClass({ classItem, onBack, onDeleted }) {
         )}
       </LoadState>
 
-      <AssignmentForm classId={classItem.id} onCreated={assignments.reload} />
+      <AssignmentForm
+        classId={classItem.id}
+        onCreated={(created) => {
+          assignments.reload();
+          setSelected(created);
+        }}
+      />
+
+      <h4>{t("tour.title")}</h4>
+      <LoadState state={tours}>
+        {tours.data?.length ? (
+          <ul className="class-list">
+            {tours.data.map((tour) => (
+              <li key={tour.id}>
+                <button type="button" className="class-row" onClick={() => onStartTour(tour)}>
+                  <strong>{tour.title}</strong>
+                  <span>{t("tour.stops", { count: tour.tour_stops.length })}</span>
+                </button>
+                <button
+                  type="button"
+                  className="class-link is-danger"
+                  onClick={() => {
+                    if (window.confirm(t("class.confirmDeleteAssignment", { name: tour.title }))) {
+                      act(() => deleteTour(tour.id), tours.reload);
+                    }
+                  }}
+                >
+                  {t("class.delete")}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="class-muted">{t("tour.empty")}</p>
+        )}
+      </LoadState>
+      <TourEditor classId={classItem.id} countries={countries} onSaved={tours.reload} />
 
       <h4>{t("class.students")}</h4>
       <LoadState state={roster}>
@@ -398,18 +493,23 @@ function TeacherClass({ classItem, onBack, onDeleted }) {
   );
 }
 
-function TeacherView() {
+function TeacherView({ countries, onStartTour }) {
   const { t } = useI18n();
   const classes = useLoad(listClasses);
   const [selected, setSelected] = useState(null);
+  const [showBank, setShowBank] = useState(false);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+
+  if (showBank) return <QuestionBank onBack={() => setShowBank(false)} />;
 
   if (selected) {
     return (
       <TeacherClass
         classItem={selected}
+        countries={countries}
+        onStartTour={onStartTour}
         onBack={() => setSelected(null)}
         onDeleted={() => {
           setSelected(null);
@@ -469,15 +569,21 @@ function TeacherView() {
           <p className="class-muted">{t("class.noClasses")}</p>
         )}
       </LoadState>
+
+      <button type="button" className="class-secondary" onClick={() => setShowBank(true)}>
+        {t("bank.title")}
+      </button>
     </>
   );
 }
 
-function StudentView({ onStartAssignment }) {
+function StudentView({ onStartAssignment, onStartTour }) {
   const { t, place } = useI18n();
   const formatDate = useFormatDate();
   const classes = useLoad(listClasses);
   const assignments = useLoad(getMyAssignments);
+  const tours = useLoad(listTours);
+  const soonLimit = new Date(new Date().getTime() + 48 * 60 * 60 * 1000);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [errorText, setErrorText] = useState(null);
@@ -491,6 +597,7 @@ function StudentView({ onStartAssignment }) {
       await joinClass(code);
       setCode("");
       classes.reload();
+      tours.reload();
       assignments.reload();
     } catch (error) {
       setErrorText(t(/invalid_code/.test(error?.message ?? "") ? "class.invalidCode" : "auth.errorGeneric"));
@@ -528,7 +635,12 @@ function StudentView({ onStartAssignment }) {
               return (
                 <li key={item.id}>
                   <div className="class-row-text">
-                    <strong>{item.title}</strong>
+                    <strong>
+                      {item.title}{" "}
+                      {canStart && item.started === 0 && new Date(item.due_at) < soonLimit && (
+                        <span className="class-tag is-warning">{t("class.dueSoon")}</span>
+                      )}
+                    </strong>
                     <span>
                       {item.class_name} · {item.region ? place(item.region) : t("quiz.allRegions")} ·{" "}
                       {t("class.questionsOf", { count: item.question_count })}
@@ -553,6 +665,24 @@ function StudentView({ onStartAssignment }) {
           </ul>
         ) : (
           <p className="class-muted">{t("class.noAssignments")}</p>
+        )}
+      </LoadState>
+
+      <h4>{t("tour.title")}</h4>
+      <LoadState state={tours}>
+        {tours.data?.length ? (
+          <ul className="class-list">
+            {tours.data.map((tour) => (
+              <li key={tour.id}>
+                <button type="button" className="class-row" onClick={() => onStartTour(tour)}>
+                  <strong>{tour.title}</strong>
+                  <span>{t("tour.stops", { count: tour.tour_stops.length })}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="class-muted">{t("tour.empty")}</p>
         )}
       </LoadState>
 
@@ -591,7 +721,7 @@ function StudentView({ onStartAssignment }) {
   );
 }
 
-function ClassroomPanel({ onClose, onStartAssignment }) {
+function ClassroomPanel({ countries, onClose, onStartAssignment, onStartTour }) {
   const { t } = useI18n();
   const { profile } = useAuth();
 
@@ -617,9 +747,9 @@ function ClassroomPanel({ onClose, onStartAssignment }) {
 
         <div className="class-body">
           {profile?.role === "teacher" ? (
-            <TeacherView />
+            <TeacherView countries={countries} onStartTour={onStartTour} />
           ) : (
-            <StudentView onStartAssignment={onStartAssignment} />
+            <StudentView onStartAssignment={onStartAssignment} onStartTour={onStartTour} />
           )}
         </div>
       </div>
