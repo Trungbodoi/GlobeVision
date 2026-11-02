@@ -12,16 +12,16 @@
   max-width: min(560px, calc(100vw - 48px));
   padding: 10px 12px;
 
-  background: rgba(10, 17, 30, 0.88);
+  background: var(--bg-surface, rgba(10, 17, 30, 0.9));
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.16));
   border-radius: 16px;
 
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
 
-  color: white;
+  color: var(--text-primary, #ffffff);
 
   animation: trayEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -55,13 +55,14 @@
 
   padding: 4px 4px 4px 10px;
 
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(125, 125, 125, 0.12);
 
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.14));
   border-radius: 999px;
 
   font-size: 13px;
   font-weight: 600;
+  color: var(--text-primary, #ffffff);
 }
 
 .compare-swatch {
@@ -69,7 +70,7 @@
   height: 10px;
 
   border-radius: 50%;
-  box-shadow: 0 0 0 2px rgba(10, 17, 30, 0.9);
+  box-shadow: 0 0 0 2px rgba(10, 17, 30, 0.5);
 }
 
 .compare-chip-remove {
@@ -82,7 +83,7 @@
   border: none;
   border-radius: 50%;
 
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-muted, rgba(255, 255, 255, 0.65));
   font-size: 16px;
   line-height: 1;
 
@@ -90,8 +91,8 @@
 }
 
 .compare-chip-remove:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: white;
+  background: rgba(125, 125, 125, 0.2);
+  color: var(--text-primary, #ffffff);
 }
 
 .compare-tray-actions {
@@ -113,9 +114,9 @@
 }
 
 .compare-open {
-  background: white;
-  border: 1px solid white;
-  color: #0a111e;
+  background: var(--text-primary, #ffffff);
+  border: 1px solid var(--text-primary, #ffffff);
+  color: var(--bg-canvas, #0a111e);
 }
 
 .compare-open:disabled {
@@ -125,12 +126,12 @@
 
 .compare-clear {
   background: none;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+  color: var(--text-secondary, rgba(255, 255, 255, 0.8));
 }
 
 .compare-clear:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(125, 125, 125, 0.12);
 }
 
 .compare-tray-hint {
@@ -139,11 +140,11 @@
   margin: 0;
 
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted, rgba(255, 255, 255, 0.65));
 }
 
 .compare-tray button:focus-visible {
-  outline: 2px solid rgba(77, 171, 247, 0.8);
+  outline: 2px solid var(--accent, #4dabf7);
   outline-offset: 2px;
 }
 

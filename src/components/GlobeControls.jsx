@@ -1,0 +1,129 @@
+import { useState } from "react";
+import { useI18n } from "../i18n/useI18n";
+import "./GlobeControls.css";
+
+function GlobeControls({
+  onZoomIn,
+  onZoomOut,
+  onResetView,
+  liteMode,
+  onToggleLiteMode,
+  theme,
+  onToggleTheme,
+}) {
+  const { t } = useI18n();
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  return (
+    <aside className="globe-controls" aria-label="Globe navigation controls">
+      <div className="globe-controls-group">
+        <button
+          type="button"
+          className="globe-ctrl-btn"
+          onClick={onZoomIn}
+          aria-label={t("controls.zoomIn")}
+          title={t("controls.zoomIn")}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          className="globe-ctrl-btn"
+          onClick={onZoomOut}
+          aria-label={t("controls.zoomOut")}
+          title={t("controls.zoomOut")}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 12h14" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          className="globe-ctrl-btn"
+          onClick={onResetView}
+          aria-label={t("controls.resetView")}
+          title={t("controls.resetView")}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="globe-controls-group">
+        <button
+          type="button"
+          className={"globe-ctrl-btn" + (liteMode ? " is-active" : "")}
+          onClick={onToggleLiteMode}
+          aria-label={liteMode ? t("controls.liteModeOn") : t("controls.liteModeOff")}
+          title={t("controls.liteModeDesc")}
+        >
+          <span className="globe-ctrl-icon" aria-hidden="true">⚡</span>
+        </button>
+
+        <button
+          type="button"
+          className="globe-ctrl-btn"
+          onClick={onToggleTheme}
+          aria-label={theme === "light" ? t("controls.themeLight") : t("controls.themeDark")}
+          title={theme === "light" ? t("controls.themeLight") : t("controls.themeDark")}
+        >
+          <span className="globe-ctrl-icon" aria-hidden="true">
+            {theme === "light" ? "☀️" : "🌙"}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          className={"globe-ctrl-btn" + (showShortcuts ? " is-active" : "")}
+          onClick={() => setShowShortcuts((v) => !v)}
+          aria-label={t("controls.shortcuts")}
+          title={t("controls.shortcuts")}
+        >
+          <span className="globe-ctrl-icon" aria-hidden="true">⌨️</span>
+        </button>
+      </div>
+
+      {showShortcuts && (
+        <div className="shortcuts-dialog" role="dialog" aria-label={t("controls.shortcutsTitle")}>
+          <div className="shortcuts-dialog-header">
+            <h3>{t("controls.shortcutsTitle")}</h3>
+            <button
+              type="button"
+              className="shortcuts-close"
+              onClick={() => setShowShortcuts(false)}
+              aria-label={t("card.close")}
+            >
+              ×
+            </button>
+          </div>
+          <ul className="shortcuts-list">
+            <li>
+              <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
+              <span>{t("controls.shortcutsRotate")}</span>
+            </li>
+            <li>
+              <kbd>+</kbd> <kbd>-</kbd>
+              <span>{t("controls.shortcutsZoom")}</span>
+            </li>
+            <li>
+              <kbd>Home</kbd> / <kbd>R</kbd>
+              <span>{t("controls.shortcutsReset")}</span>
+            </li>
+            <li>
+              <kbd>Esc</kbd>
+              <span>{t("controls.shortcutsClose")}</span>
+            </li>
+          </ul>
+        </div>
+      )}
+    </aside>
+  );
+}
+
+export default GlobeControls;

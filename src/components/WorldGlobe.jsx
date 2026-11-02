@@ -21,6 +21,7 @@ import CountryCard from "./CountryCard";
 import CountrySearch from "./CountrySearch";
 import CompareTray from "./CompareTray";
 import ComparePanel from "./ComparePanel";
+import GlobeControls from "./GlobeControls";
 import "./WorldGlobe.css";
 
 // Chiều rộng thẻ thông tin + lề (xem CountryCard.css).
@@ -28,7 +29,8 @@ const CARD_SPACE = 370 + 24 * 2;
 const MOBILE_BREAKPOINT = 600;
 
 const COLORS = {
-  default: "#eeeeee",
+  defaultDark: "#eeeeee",
+  defaultLight: "#f8fafc",
   hover: "#4dabf7",
   selected: "#1c7ed6",
   neighbor: "#a5d8ff",
@@ -59,6 +61,25 @@ function WorldGlobe({ onProgress, onLoaded }) {
   const [compareIds, setCompareIds] = useState([]);
   const [compareOpen, setCompareOpen] = useState(false);
 
+  // Theme & Lite Mode state
+  const [theme, setTheme] = useState(() => {
+    try {
+      const stored = localStorage.getItem("globevision.theme");
+      if (stored === "light" || stored === "dark") return stored;
+      return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    } catch {
+      return "dark";
+    }
+  });
+
+  const [liteMode, setLiteMode] = useState(() => {
+    try {
+      return localStorage.getItem("globevision.liteMode") === "true";
+    } catch {
+      return false;
+    }
+  });
+
   const globeRef = useRef();
   const globeInstanceRef = useRef(null);
   const highlightRef = useRef({
@@ -66,6 +87,7 @@ function WorldGlobe({ onProgress, onLoaded }) {
     selectedId: null,
     neighborIds: new Set(),
     compareColors: new Map(),
+    theme: "dark",
   });
   const langRef = useRef(lang);
 
@@ -115,10 +137,21 @@ function WorldGlobe({ onProgress, onLoaded }) {
     let borders;
     let starMaterial;
     let atmosMat;
+    let sceneBackground;
+    let globeMat;
     let disposed = false;
+    let isUpdatingUniforms = false;
 
     function applyColors() {
-      const { hoverId, selectedId: current, neighborIds, compareColors } = highlightRef.current;
+      const {
+        hoverId,
+        selectedId: current,
+        neighborIds,
+        compareColors,
+        theme: currentTheme,
+      } = highlightRef.current;
+      const defaultColor =
+        currentTheme === "light" ? COLORS.defaultLight : COLORS.defaultDark;
 
       globe?.polygonCapColor(({ properties }) => {
         if (properties.id === hoverId) return COLORS.hover;
@@ -126,7 +159,7 @@ function WorldGlobe({ onProgress, onLoaded }) {
         if (properties.id === current) return COLORS.selected;
         if (neighborIds.has(properties.id)) return COLORS.neighbor;
 
-        return COLORS.default;
+        return defaultColor;
       });
     }
 
@@ -165,13 +198,12 @@ function WorldGlobe({ onProgress, onLoaded }) {
         if (onProgress) onProgress(45);
 
         globe = Globe()(globeRef.current);
-        globeInstanceRef.current = { globe, applyColors, fitGlobe };
-        if (onProgress) onProgress(55);
-
         const scene = globe.scene();
 
         // Nền
-        scene.background = new THREE.Color(0x000000);
+        const isLight = document.documentElement.getAttribute("data-theme") === "light";
+        sceneBackground = new THREE.Color(isLight ? 0xdbeafe : 0x000000);
+        scene.background = sceneBackground;
 
         // Ánh sáng
         const ambientLight = new THREE.AmbientLight(0x4488cc, 2.5);
@@ -193,16 +225,16 @@ function WorldGlobe({ onProgress, onLoaded }) {
         if (onProgress) onProgress(70);
 
         // Globe.gl
+        globeMat = new THREE.MeshStandardMaterial({
+          color: isLight ? 0xa4caf6 : 0x061238,
+          roughness: 0.7,
+          metalness: 0.05,
+        });
+
         globe
           .showAtmosphere(false)
-          .globeMaterial(
-            new THREE.MeshStandardMaterial({
-              color: 0x061238,
-              roughness: 0.7,
-              metalness: 0.05,
-            })
-          )
-          .polygonSideColor(() => "#cccccc")
+          .globeMaterial(globeMat)
+          .polygonSideColor(() => (isLight ? "#cbd5e1" : "#cccccc"))
           .polygonStrokeColor(() => "rgba(0,0,0,0)")
           .polygonAltitude(0.01)
           .polygonLabel(({ properties }) => {
@@ -212,9 +244,11 @@ function WorldGlobe({ onProgress, onLoaded }) {
               <div style="
                 background: white;
                 padding: 6px 10px;
-                border-radius: 5px;
-                color: black;
+                border-radius: 6px;
+                color: #0f172a;
                 font-size: 14px;
+                font-weight: 600;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
               ">
                 <b>${escapeHtml(name)}</b>
               </div>
@@ -229,6 +263,17 @@ function WorldGlobe({ onProgress, onLoaded }) {
           })
           .polygonsData(data.features);
 
+        globeInstanceRef.current = {
+          globe,
+          scene,
+          stars,
+          atmosphere,
+          graticuleGroup,
+          globeMat,
+          applyColors,
+          fitGlobe,
+        };
+
         applyColors();
         if (onProgress) onProgress(90);
 
@@ -241,20 +286,27 @@ function WorldGlobe({ onProgress, onLoaded }) {
 
         const controls = globe.controls();
         controls.enableZoom = true;
-        controls.minDistance = 150;
-        controls.maxDistance = 400;
+        controls.minDistance = 140;
+        controls.maxDistance = 450;
         controls.enableDamping = true;
         controls.dampingFactor = 0.08;
         controls.autoRotate = false;
 
+        // Throttle updates bằng requestAnimationFrame để tối ưu hiệu năng
         controls.addEventListener("change", () => {
-          if (starMaterial) {
-            starMaterial.uniforms.uCameraPosition.value.copy(globe.camera().position);
-          }
+          if (isUpdatingUniforms) return;
+          isUpdatingUniforms = true;
 
-          if (atmosMat) {
-            atmosMat.uniforms.uViewPos.value.copy(globe.camera().position);
-          }
+          requestAnimationFrame(() => {
+            if (starMaterial && stars?.visible) {
+              starMaterial.uniforms.uCameraPosition.value.copy(globe.camera().position);
+            }
+
+            if (atmosMat && atmosphere?.visible) {
+              atmosMat.uniforms.uViewPos.value.copy(globe.camera().position);
+            }
+            isUpdatingUniforms = false;
+          });
         });
 
         setCountryData(data);
@@ -268,8 +320,7 @@ function WorldGlobe({ onProgress, onLoaded }) {
           writeCountryParam(null, { replace: true });
         }
 
-        // Danh sách so sánh trong liên kết được chia sẻ (?compare=VN,JP,FR):
-        // bỏ mã không hợp lệ / trùng, mở bảng so sánh ngay nếu đủ 2 nước.
+        // Danh sách so sánh trong liên kết được chia sẻ (?compare=VN,JP,FR)
         const sharedCompare = readCompareParam();
         const initialCompare = [...new Set(sharedCompare)]
           .filter((id) => data.byId.has(id))
@@ -288,7 +339,7 @@ function WorldGlobe({ onProgress, onLoaded }) {
           });
         }
       } catch (error) {
-        console.error("ERROR:", error);
+        console.error("ERROR loading globe:", error);
 
         if (onProgress) onProgress(100);
 
@@ -324,8 +375,160 @@ function WorldGlobe({ onProgress, onLoaded }) {
         });
       });
     };
-    // Địa cầu chỉ được tạo một lần khi component mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ----------------------------------------------------------------
+  // Cập nhật Theme & Lite Mode trên Three.js instance
+  // ----------------------------------------------------------------
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    try {
+      localStorage.setItem("globevision.theme", theme);
+    } catch {
+      // bỏ qua
+    }
+
+    const inst = globeInstanceRef.current;
+    if (!inst) return;
+
+    highlightRef.current.theme = theme;
+    inst.applyColors();
+
+    const isLight = theme === "light";
+    inst.scene.background = new THREE.Color(isLight ? 0xdbeafe : 0x000000);
+    inst.globeMat.color.set(isLight ? 0xa4caf6 : 0x061238);
+    inst.globe.polygonSideColor(() => (isLight ? "#cbd5e1" : "#cccccc"));
+  }, [theme]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("globevision.liteMode", String(liteMode));
+    } catch {
+      // bỏ qua
+    }
+
+    const inst = globeInstanceRef.current;
+    if (!inst) return;
+
+    if (inst.atmosphere) inst.atmosphere.visible = !liteMode;
+    if (inst.stars) inst.stars.visible = !liteMode;
+    if (inst.graticuleGroup) inst.graticuleGroup.visible = !liteMode;
+  }, [liteMode]);
+
+  // ----------------------------------------------------------------
+  // Bàn phím điều hướng (Keyboard Navigation)
+  // ----------------------------------------------------------------
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      const tag = event.target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || event.target?.isContentEditable) {
+        return;
+      }
+
+      const globe = globeInstanceRef.current?.globe;
+      if (!globe) return;
+
+      const currentPov = globe.pointOfView();
+
+      switch (event.key) {
+        case "ArrowLeft":
+        case "a":
+        case "A": {
+          event.preventDefault();
+          globe.pointOfView({ ...currentPov, lng: currentPov.lng - 15 }, 200);
+          break;
+        }
+        case "ArrowRight":
+        case "d":
+        case "D": {
+          event.preventDefault();
+          globe.pointOfView({ ...currentPov, lng: currentPov.lng + 15 }, 200);
+          break;
+        }
+        case "ArrowUp":
+        case "w":
+        case "W": {
+          event.preventDefault();
+          globe.pointOfView(
+            { ...currentPov, lat: Math.min(85, currentPov.lat + 10) },
+            200
+          );
+          break;
+        }
+        case "ArrowDown":
+        case "s":
+        case "S": {
+          event.preventDefault();
+          globe.pointOfView(
+            { ...currentPov, lat: Math.max(-85, currentPov.lat - 10) },
+            200
+          );
+          break;
+        }
+        case "+":
+        case "=": {
+          event.preventDefault();
+          globe.pointOfView(
+            { ...currentPov, altitude: Math.max(0.6, currentPov.altitude * 0.8) },
+            200
+          );
+          break;
+        }
+        case "-":
+        case "_": {
+          event.preventDefault();
+          globe.pointOfView(
+            { ...currentPov, altitude: Math.min(4.0, currentPov.altitude * 1.25) },
+            200
+          );
+          break;
+        }
+        case "Home":
+        case "r":
+        case "R": {
+          event.preventDefault();
+          globe.pointOfView({ lat: 20, lng: 0, altitude: 2.5 }, 500);
+          break;
+        }
+        case "Escape": {
+          if (compareOpen) {
+            setCompareOpen(false);
+          } else if (selectedId) {
+            closeCountry();
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [compareOpen, selectedId, closeCountry]);
+
+  // ----------------------------------------------------------------
+  // Điều khiển camera từ giao diện (GlobeControls actions)
+  // ----------------------------------------------------------------
+  const handleZoomIn = useCallback(() => {
+    const globe = globeInstanceRef.current?.globe;
+    if (!globe) return;
+    const pov = globe.pointOfView();
+    globe.pointOfView({ ...pov, altitude: Math.max(0.6, pov.altitude * 0.75) }, 300);
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    const globe = globeInstanceRef.current?.globe;
+    if (!globe) return;
+    const pov = globe.pointOfView();
+    globe.pointOfView({ ...pov, altitude: Math.min(4.0, pov.altitude * 1.3) }, 300);
+  }, []);
+
+  const handleResetView = useCallback(() => {
+    const globe = globeInstanceRef.current?.globe;
+    if (!globe) return;
+    globe.pointOfView({ lat: 20, lng: 0, altitude: 2.5 }, 600);
   }, []);
 
   // ----------------------------------------------------------------
@@ -338,8 +541,6 @@ function WorldGlobe({ onProgress, onLoaded }) {
       const id = readCountryParam();
 
       setSelectedId(id && countryData.byId.has(id) ? id : null);
-
-      // Back/Forward chỉ đổi quốc gia đang xem; giữ nguyên danh sách so sánh.
       writeCompareParam(compareIds);
     };
 
@@ -351,12 +552,15 @@ function WorldGlobe({ onProgress, onLoaded }) {
   const selectedCountry = selectedId ? countryData?.byId.get(selectedId) ?? null : null;
 
   // ----------------------------------------------------------------
-  // Đưa camera đến quốc gia được chọn
+  // Đưa camera đến quốc gia được chọn (tôn trọng prefers-reduced-motion)
   // ----------------------------------------------------------------
   useEffect(() => {
     const globe = globeInstanceRef.current?.globe;
 
     if (!globe || !selectedCountry) return;
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const duration = prefersReducedMotion ? 0 : 1000;
 
     globe.pointOfView(
       {
@@ -364,7 +568,7 @@ function WorldGlobe({ onProgress, onLoaded }) {
         lng: selectedCountry.labelLng,
         altitude: altitudeFor(selectedCountry),
       },
-      1000
+      duration
     );
   }, [selectedCountry]);
 
@@ -465,6 +669,17 @@ function WorldGlobe({ onProgress, onLoaded }) {
           onClose={closeCompare}
         />
       )}
+
+      {/* Visual Controls for Navigation, Lite Mode, Theme & Shortcuts */}
+      <GlobeControls
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onResetView={handleResetView}
+        liteMode={liteMode}
+        onToggleLiteMode={() => setLiteMode((v) => !v)}
+        theme={theme}
+        onToggleTheme={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
+      />
 
       <SourceNote />
     </div>

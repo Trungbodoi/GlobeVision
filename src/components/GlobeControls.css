@@ -1,0 +1,170 @@
+.globe-controls {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 99996;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.globe-controls-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--bg-surface, rgba(10, 17, 30, 0.88));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.14));
+  border-radius: 14px;
+  padding: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.globe-ctrl-btn {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 9px;
+  color: var(--text-primary, #ffffff);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+  padding: 0;
+}
+
+.globe-ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.globe-ctrl-btn:active {
+  transform: scale(0.92);
+}
+
+.globe-ctrl-btn.is-active {
+  background: rgba(77, 171, 247, 0.3);
+  color: #74c0fc;
+}
+
+.globe-ctrl-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.globe-ctrl-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.globe-ctrl-btn:focus-visible {
+  outline: 2px solid #4dabf7;
+  outline-offset: 2px;
+}
+
+/* Shortcuts Dialog */
+.shortcuts-dialog {
+  position: absolute;
+  right: calc(100% + 12px);
+  bottom: 0;
+  width: 290px;
+  background: var(--bg-surface, rgba(10, 17, 30, 0.95));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.14));
+  border-radius: 16px;
+  padding: 16px;
+  color: var(--text-primary, #ffffff);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  animation: dialogEnter 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+@keyframes dialogEnter {
+  from {
+    opacity: 0;
+    transform: translateX(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.shortcuts-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 8px;
+}
+
+.shortcuts-dialog-header h3 {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.shortcuts-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.shortcuts-close:hover {
+  color: #ffffff;
+}
+
+.shortcuts-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shortcuts-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.75));
+}
+
+.shortcuts-list kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  margin-right: 3px;
+}
+
+@media (max-width: 600px) {
+  .globe-controls {
+    right: 12px;
+    bottom: 60px;
+  }
+  .shortcuts-dialog {
+    right: 0;
+    bottom: calc(100% + 10px);
+    width: 260px;
+  }
+}

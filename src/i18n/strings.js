@@ -70,6 +70,21 @@ export const STRINGS = {
     "unit.km2": "km²",
     "unit.perKm2": "người/km²",
 
+    "controls.zoomIn": "Phóng to (+)",
+    "controls.zoomOut": "Thu nhỏ (-)",
+    "controls.resetView": "Đặt lại góc nhìn (Home/R)",
+    "controls.liteModeOn": "Chế độ nhẹ: Bật",
+    "controls.liteModeOff": "Chế độ nhẹ: Tắt",
+    "controls.liteModeDesc": "Tắt khí quyển và hiệu ứng sao để tăng tốc thiết bị",
+    "controls.themeDark": "Giao diện: Tối",
+    "controls.themeLight": "Giao diện: Sáng",
+    "controls.shortcuts": "Phím tắt điều khiển",
+    "controls.shortcutsTitle": "Phím tắt bàn phím",
+    "controls.shortcutsRotate": "Xoay địa cầu: Phím Mũi tên hoặc W / A / S / D",
+    "controls.shortcutsZoom": "Phóng to / thu nhỏ: Phím + / -",
+    "controls.shortcutsReset": "Về góc nhìn ban đầu: Phím Home hoặc R",
+    "controls.shortcutsClose": "Đóng bảng / thẻ: Phím Escape",
+
     "footer.sources":
       "Bản đồ: Natural Earth · Thông tin quốc gia: GeoNames (CC BY 4.0) qua countries.dev · Ranh giới hiển thị không thể hiện quan điểm về chủ quyền.",
   },
@@ -139,6 +154,21 @@ export const STRINGS = {
     "unit.people": "people",
     "unit.km2": "km²",
     "unit.perKm2": "people/km²",
+
+    "controls.zoomIn": "Zoom in (+)",
+    "controls.zoomOut": "Zoom out (-)",
+    "controls.resetView": "Reset view (Home/R)",
+    "controls.liteModeOn": "Lite mode: On",
+    "controls.liteModeOff": "Lite mode: Off",
+    "controls.liteModeDesc": "Disable atmosphere & stars for better performance",
+    "controls.themeDark": "Theme: Dark",
+    "controls.themeLight": "Theme: Light",
+    "controls.shortcuts": "Keyboard shortcuts",
+    "controls.shortcutsTitle": "Keyboard controls",
+    "controls.shortcutsRotate": "Rotate globe: Arrow keys or W / A / S / D",
+    "controls.shortcutsZoom": "Zoom in / out: + and - keys",
+    "controls.shortcutsReset": "Reset view: Home or R key",
+    "controls.shortcutsClose": "Close dialog / card: Escape key",
 
     "footer.sources":
       "Map: Natural Earth · Country data: GeoNames (CC BY 4.0) via countries.dev · Borders shown do not imply any position on sovereignty.",
