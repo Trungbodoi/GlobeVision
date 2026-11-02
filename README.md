@@ -40,6 +40,20 @@ Các lệnh khác:
 | `npm run lint` | Kiểm tra code bằng ESLint |
 | `npm run data:build` | Tạo lại dữ liệu quốc gia chuẩn hóa (xem bên dưới) |
 
+## Backend (Supabase)
+
+Phần tra cứu địa cầu chạy được mà không cần backend. Nút đăng nhập chỉ hiện khi đã cấu hình Supabase.
+
+1. Tạo project trên [Supabase](https://supabase.com).
+2. Trong SQL Editor, chạy lần lượt các file trong `supabase/migrations/` theo thứ tự tên file.
+3. Sao chép `.env.example` thành `.env.local`, điền URL và anon key lấy từ Project Settings > API.
+4. Trong Authentication > URL Configuration, đặt Site URL và thêm `http://localhost:5173/GlobeVision/**` cùng địa chỉ website thật vào Redirect URLs.
+5. Muốn đăng nhập bằng Google: bật provider Google trong Authentication > Providers.
+
+Khi triển khai, thêm `VITE_SUPABASE_URL` và `VITE_SUPABASE_ANON_KEY` vào GitHub: Settings > Secrets and variables > Actions > Variables.
+
+Mỗi người chọn vai trò giáo viên hoặc học sinh một lần sau lần đăng nhập đầu tiên. Muốn đổi vai trò, quản trị viên sửa cột `role` của bảng `profiles` trên Supabase.
+
 ## Dữ liệu
 
 | Nguồn | Dùng cho | Giấy phép |
