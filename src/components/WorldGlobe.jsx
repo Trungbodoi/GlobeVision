@@ -22,6 +22,7 @@ import CountrySearch from "./CountrySearch";
 import CompareTray from "./CompareTray";
 import ComparePanel from "./ComparePanel";
 import GlobeControls from "./GlobeControls";
+import DataSourcesModal from "./DataSourcesModal";
 import "./WorldGlobe.css";
 
 // Chiều rộng thẻ thông tin + lề (xem CountryCard.css).
@@ -60,6 +61,7 @@ function WorldGlobe({ onProgress, onLoaded }) {
   const [retryCount, setRetryCount] = useState(0);
   const [compareIds, setCompareIds] = useState([]);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [isSourcesModalOpen, setIsSourcesModalOpen] = useState(false);
 
   // Theme & Lite Mode state
   const [theme, setTheme] = useState(() => {
@@ -644,6 +646,7 @@ function WorldGlobe({ onProgress, onLoaded }) {
 
       {/* Country Card */}
       <CountryCard
+        key={selectedCountry?.id || "none"}
         country={selectedCountry}
         details={currentDetails}
         loading={loadingDetails}
@@ -653,6 +656,7 @@ function WorldGlobe({ onProgress, onLoaded }) {
         onClose={closeCountry}
         compareIds={compareIds}
         onToggleCompare={toggleCompare}
+        onOpenSources={() => setIsSourcesModalOpen(true)}
       />
 
       <CompareTray
@@ -681,15 +685,38 @@ function WorldGlobe({ onProgress, onLoaded }) {
         onToggleTheme={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
       />
 
-      <SourceNote />
+      <SourceNote onOpenSources={() => setIsSourcesModalOpen(true)} />
+
+      {/* Modal Nguồn dữ liệu & Giấy phép */}
+      <DataSourcesModal
+        isOpen={isSourcesModalOpen}
+        onClose={() => setIsSourcesModalOpen(false)}
+      />
     </div>
   );
 }
 
-function SourceNote() {
+function SourceNote({ onOpenSources }) {
   const { t } = useI18n();
 
-  return <p className="world-globe-sources">{t("footer.sources")}</p>;
+  return (
+    <button
+      type="button"
+      className="world-globe-sources"
+      onClick={onOpenSources}
+      title={t("sources.viewDetails")}
+      style={{
+        background: "none",
+        border: "none",
+        textAlign: "left",
+        cursor: "pointer",
+        pointerEvents: "auto",
+        padding: 0,
+      }}
+    >
+      {t("footer.sources")}
+    </button>
+  );
 }
 
 export default WorldGlobe;

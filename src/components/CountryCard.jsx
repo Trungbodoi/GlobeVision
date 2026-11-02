@@ -1,25 +1,31 @@
 import { useEffect, useState } from "react";
 import { getCountryName } from "../data/countries";
 import { getCapitalTimezone } from "../services/countryApi";
+import { getCountryWikiSummary } from "../services/wikiApi";
+import { getCountryWorldBankData } from "../services/worldBankApi";
+import { getCapitalWeather, getWeatherDescription } from "../services/weatherApi";
+import { getNextPublicHolidays } from "../services/holidayApi";
+import { getCountryLandmarkPhotos } from "../services/mediaApi";
 import { useI18n } from "../i18n/useI18n";
 import { MAX_COMPARE } from "../data/compare";
 import ShareButton from "./ShareButton";
+import SparklineChart from "./SparklineChart";
 import {
   formatCallingCodes,
   formatCurrencies,
   formatLanguages,
+  formatNumber,
   hasValue,
   numberLocale,
 } from "../utils/format";
 import "./CountryCard.css";
 
-function AnimatedNumber({ value, duration = 1200 }) {
+function AnimatedNumber({ value, duration = 1000 }) {
   const { lang } = useI18n();
   const [displayValue, setDisplayValue] = useState(0);
 
   useEffect(() => {
     const target = Number(value);
-
     if (!Number.isFinite(target)) return;
 
     let startTime = null;
@@ -29,9 +35,7 @@ function AnimatedNumber({ value, duration = 1200 }) {
 
     const animate = (timestamp) => {
       if (!startTime) startTime = timestamp;
-
       const progress = Math.min((timestamp - startTime) / duration, 1);
-
       setDisplayValue(target * easeOutCubic(progress));
 
       if (progress < 1) {
@@ -40,21 +44,16 @@ function AnimatedNumber({ value, duration = 1200 }) {
     };
 
     frameId = requestAnimationFrame(animate);
-
     return () => cancelAnimationFrame(frameId);
   }, [value, duration]);
 
   return <>{Math.round(displayValue).toLocaleString(numberLocale(lang))}</>;
 }
 
-// "UTC+07:00" -> 420 (phút)
 function parseUtcOffset(text) {
   const match = /^UTC([+-])(\d{2}):(\d{2})$/.exec(text || "");
-
   if (!match) return text === "UTC" ? 0 : null;
-
   const minutes = Number(match[2]) * 60 + Number(match[3]);
-
   return match[1] === "-" ? -minutes : minutes;
 }
 
@@ -65,7 +64,6 @@ function LocalTime({ capital, countryCode, timezones }) {
 
   useEffect(() => {
     let cancelled = false;
-
     getCapitalTimezone(capital, countryCode)
       .then((result) => {
         if (!cancelled) setZone({ key: `${countryCode}.${capital}`, ...result });
@@ -81,7 +79,6 @@ function LocalTime({ capital, countryCode, timezones }) {
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 15000);
-
     return () => clearInterval(timer);
   }, []);
 
@@ -101,10 +98,8 @@ function LocalTime({ capital, countryCode, timezones }) {
     }
   }
 
-  // Không tìm được thủ đô: chỉ tính được khi quốc gia có đúng một múi giờ.
   if (!text && timezones?.length === 1) {
     const offset = parseUtcOffset(timezones[0]);
-
     if (offset != null) {
       text = new Intl.DateTimeFormat(numberLocale(lang), {
         ...formatOptions,
@@ -136,7 +131,6 @@ function Neighbors({ neighbors, onSelect }) {
     <div className="country-neighbors">
       {neighbors.map((neighbor) => {
         const name = getCountryName(neighbor, lang);
-
         return (
           <button
             key={neighbor.id}
@@ -163,8 +157,58 @@ function CountryCard({
   onClose,
   compareIds,
   onToggleCompare,
+  onOpenSources,
 }) {
   const { lang, t, place } = useI18n();
+  const [activeTab, setActiveTab] = useState("overview");
+
+  // State các nguồn mở rộng (Phase 2)
+  const [wikiData, setWikiData] = useState(null);
+  const [wbData, setWbData] = useState(null);
+  const [weatherData, setWeatherData] = useState(null);
+  const [holidays, setHolidays] = useState(null);
+  const [photos, setPhotos] = useState(null);
+
+  // Lazy Fetching khi chuyển tab
+  useEffect(() => {
+    if (!country) return;
+    let cancelled = false;
+
+    if (activeTab === "culture") {
+      if (wikiData === null) {
+        getCountryWikiSummary(country.nameVi, country.nameEn).then((res) => {
+          if (!cancelled) setWikiData(res || false);
+        });
+      }
+      if (holidays === null && country.iso2) {
+        getNextPublicHolidays(country.iso2).then((res) => {
+          if (!cancelled) setHolidays(res || []);
+        });
+      }
+    } else if (activeTab === "economy") {
+      if (wbData === null && country.iso3) {
+        getCountryWorldBankData(country.iso3).then((res) => {
+          if (!cancelled) setWbData(res || false);
+        });
+      }
+    } else if (activeTab === "climate") {
+      if (weatherData === null) {
+        getCapitalWeather(country.labelLat, country.labelLng).then((res) => {
+          if (!cancelled) setWeatherData(res || false);
+        });
+      }
+    } else if (activeTab === "media") {
+      if (photos === null) {
+        getCountryLandmarkPhotos(country.nameEn).then((res) => {
+          if (!cancelled) setPhotos(res || []);
+        });
+      }
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, country, wikiData, holidays, wbData, weatherData, photos]);
 
   if (!country) return null;
 
@@ -223,128 +267,428 @@ function CountryCard({
         </div>
       </div>
 
-      {/* Loading */}
-      {loading ? (
-        <div className="country-loading">
-          <div className="loading-spinner"></div>
-          <span>{t("card.loading")}</span>
+      {/* Tab Bar Điều Hướng 5 Mục */}
+      <nav className="country-card-tabs" aria-label="Country detail tabs">
+        <button
+          type="button"
+          className={"country-tab-btn" + (activeTab === "overview" ? " is-active" : "")}
+          onClick={() => setActiveTab("overview")}
+        >
+          {t("tab.overview")}
+        </button>
+        <button
+          type="button"
+          className={"country-tab-btn" + (activeTab === "economy" ? " is-active" : "")}
+          onClick={() => setActiveTab("economy")}
+        >
+          {t("tab.economy")}
+        </button>
+        <button
+          type="button"
+          className={"country-tab-btn" + (activeTab === "climate" ? " is-active" : "")}
+          onClick={() => setActiveTab("climate")}
+        >
+          {t("tab.climate")}
+        </button>
+        <button
+          type="button"
+          className={"country-tab-btn" + (activeTab === "culture" ? " is-active" : "")}
+          onClick={() => setActiveTab("culture")}
+        >
+          {t("tab.culture")}
+        </button>
+        <button
+          type="button"
+          className={"country-tab-btn" + (activeTab === "media" ? " is-active" : "")}
+          onClick={() => setActiveTab("media")}
+        >
+          {t("tab.media")}
+        </button>
+      </nav>
+
+      {/* Nội dung chi tiết */}
+      <div className="country-info">
+        {country.disputed && <p className="country-notice">{t("card.disputed")}</p>}
+        {!country.apiCode && <p className="country-notice">{t("card.noIso")}</p>}
+
+        {details?.error && (
+          <p className="country-notice is-error">
+            {t("card.apiError")}{" "}
+            <button type="button" className="country-notice-retry" onClick={onRetry}>
+              {t("card.retry")}
+            </button>
+          </p>
+        )}
+
+        {details?.stale && (
+          <p className="country-notice">
+            {t("card.staleNotice", {
+              date: new Date(details.savedAt).toLocaleDateString(numberLocale(lang)),
+            })}
+          </p>
+        )}
+
+        {/* TAB 1: TỔNG QUAN */}
+        {activeTab === "overview" && (
+          <>
+            {loading ? (
+              <div className="country-loading">
+                <div className="loading-spinner"></div>
+                <span>{t("card.loading")}</span>
+              </div>
+            ) : data ? (
+              <>
+                <InfoItem label={t("field.capital")} value={data.capital} />
+                <InfoItem
+                  label={t("field.localTime")}
+                  value={
+                    <LocalTime
+                      capital={data.capital}
+                      countryCode={country.apiCode}
+                      timezones={data.timezones}
+                    />
+                  }
+                />
+                <InfoItem
+                  label={t("field.population")}
+                  value={
+                    hasValue(data.population) ? (
+                      <>
+                        <AnimatedNumber value={data.population} />
+                        <span className="unit"> {t("unit.people")}</span>
+                      </>
+                    ) : null
+                  }
+                />
+                <InfoItem
+                  label={t("field.area")}
+                  value={
+                    hasValue(data.area) ? (
+                      <>
+                        <AnimatedNumber value={data.area} />
+                        <span className="unit"> {t("unit.km2")}</span>
+                      </>
+                    ) : null
+                  }
+                />
+                <InfoItem
+                  label={t("field.density")}
+                  value={
+                    hasValue(data.populationDensity) ? (
+                      <>
+                        <AnimatedNumber value={data.populationDensity} />
+                        <span className="unit"> {t("unit.perKm2")}</span>
+                      </>
+                    ) : null
+                  }
+                />
+                <InfoItem label={t("field.region")} value={place(data.region)} />
+                <InfoItem label={t("field.subregion")} value={place(data.subregion)} />
+                <InfoItem
+                  label={t("field.neighbors")}
+                  value={<Neighbors neighbors={neighbors} onSelect={onSelectNeighbor} />}
+                  wide
+                />
+                <InfoItem label={t("field.currencies")} value={currencies} />
+                <InfoItem label={t("field.languages")} value={languages} />
+                <InfoItem label={t("field.timezones")} value={data.timezones?.join(", ")} />
+                <InfoItem label={t("field.callingCode")} value={callingCodes} />
+              </>
+            ) : (
+              <>
+                <InfoItem label={t("field.continent")} value={place(country.continent)} />
+                <InfoItem label={t("field.subregion")} value={place(country.subregion)} />
+                <InfoItem
+                  label={t("field.populationEst", { year: country.popYear ?? "?" })}
+                  value={
+                    hasValue(country.popEst) ? (
+                      <>
+                        <AnimatedNumber value={country.popEst} />
+                        <span className="unit"> {t("unit.people")}</span>
+                      </>
+                    ) : null
+                  }
+                />
+              </>
+            )}
+          </>
+        )}
+
+        {/* TAB 2: KINH TẾ & XÃ HỘI (World Bank Open Data) */}
+        {activeTab === "economy" && (
+          <div className="tab-pane-content">
+            {wbData === null ? (
+              <div className="country-loading">
+                <div className="loading-spinner"></div>
+                <span>{t("card.loading")}</span>
+              </div>
+            ) : wbData ? (
+              <>
+                {/* GDP bình quân đầu người */}
+                <div className="wb-metric-card">
+                  <div className="wb-metric-header">
+                    <span className="wb-metric-label">{t("wb.gdp")}</span>
+                    <span className="wb-metric-value">
+                      {wbData.gdpPerCapita?.latest
+                        ? `$${formatNumber(wbData.gdpPerCapita.latest.value, lang)}`
+                        : t("card.noData")}
+                    </span>
+                  </div>
+                  {wbData.gdpPerCapita?.latest && (
+                    <span className="wb-metric-year">
+                      {lang === "vi" ? `Năm ${wbData.gdpPerCapita.latest.year}` : `Year ${wbData.gdpPerCapita.latest.year}`} · World Bank
+                    </span>
+                  )}
+                  {wbData.gdpPerCapita?.history?.length > 1 && (
+                    <SparklineChart
+                      history={wbData.gdpPerCapita.history}
+                      unit="$"
+                      color="#339af0"
+                    />
+                  )}
+                </div>
+
+                {/* Tuổi thọ trung bình */}
+                <div className="wb-metric-card">
+                  <div className="wb-metric-header">
+                    <span className="wb-metric-label">{t("wb.lifeExpectancy")}</span>
+                    <span className="wb-metric-value">
+                      {wbData.lifeExpectancy?.latest
+                        ? `${wbData.lifeExpectancy.latest.value.toFixed(1)} ${lang === "vi" ? "năm" : "years"}`
+                        : t("card.noData")}
+                    </span>
+                  </div>
+                  {wbData.lifeExpectancy?.latest && (
+                    <span className="wb-metric-year">
+                      {lang === "vi" ? `Năm ${wbData.lifeExpectancy.latest.year}` : `Year ${wbData.lifeExpectancy.latest.year}`} · World Bank
+                    </span>
+                  )}
+                  {wbData.lifeExpectancy?.history?.length > 1 && (
+                    <SparklineChart
+                      history={wbData.lifeExpectancy.history}
+                      unit={lang === "vi" ? "năm" : "yrs"}
+                      color="#20c997"
+                    />
+                  )}
+                </div>
+
+                {/* Tỷ lệ đô thị hóa */}
+                <div className="wb-metric-card">
+                  <div className="wb-metric-header">
+                    <span className="wb-metric-label">{t("wb.urbanRate")}</span>
+                    <span className="wb-metric-value">
+                      {wbData.urbanPopulationRate?.latest
+                        ? `${wbData.urbanPopulationRate.latest.value.toFixed(1)}%`
+                        : t("card.noData")}
+                    </span>
+                  </div>
+                  {wbData.urbanPopulationRate?.latest && (
+                    <span className="wb-metric-year">
+                      {lang === "vi" ? `Năm ${wbData.urbanPopulationRate.latest.year}` : `Year ${wbData.urbanPopulationRate.latest.year}`} · World Bank
+                    </span>
+                  )}
+                </div>
+
+                {/* Phát thải CO2 bình quân */}
+                <div className="wb-metric-card">
+                  <div className="wb-metric-header">
+                    <span className="wb-metric-label">{t("wb.co2")}</span>
+                    <span className="wb-metric-value">
+                      {wbData.co2PerCapita?.latest
+                        ? `${wbData.co2PerCapita.latest.value.toFixed(2)} ${lang === "vi" ? "tấn" : "tons"}`
+                        : t("card.noData")}
+                    </span>
+                  </div>
+                  {wbData.co2PerCapita?.latest && (
+                    <span className="wb-metric-year">
+                      {lang === "vi" ? `Năm ${wbData.co2PerCapita.latest.year}` : `Year ${wbData.co2PerCapita.latest.year}`} · World Bank
+                    </span>
+                  )}
+                </div>
+
+                {/* Tỷ lệ biết chữ */}
+                <div className="wb-metric-card">
+                  <div className="wb-metric-header">
+                    <span className="wb-metric-label">{t("wb.literacy")}</span>
+                    <span className="wb-metric-value">
+                      {wbData.literacyRate?.latest
+                        ? `${wbData.literacyRate.latest.value.toFixed(1)}%`
+                        : t("card.noData")}
+                    </span>
+                  </div>
+                  {wbData.literacyRate?.latest && (
+                    <span className="wb-metric-year">
+                      {lang === "vi" ? `Năm ${wbData.literacyRate.latest.year}` : `Year ${wbData.literacyRate.latest.year}`} · World Bank
+                    </span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="tab-empty-msg">{t("card.noData")}</p>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: KHÍ HẬU & THỜI TIẾT (Open-Meteo) */}
+        {activeTab === "climate" && (
+          <div className="tab-pane-content">
+            {weatherData === null ? (
+              <div className="country-loading">
+                <div className="loading-spinner"></div>
+                <span>{t("card.loading")}</span>
+              </div>
+            ) : weatherData ? (
+              <div className="weather-card">
+                <div className="weather-hero">
+                  <span className="weather-icon" aria-hidden="true">
+                    {getWeatherDescription(weatherData.weatherCode, lang).icon}
+                  </span>
+                  <div className="weather-temp-wrap">
+                    <span className="weather-temp">{weatherData.temperature}°C</span>
+                    <span className="weather-desc">
+                      {getWeatherDescription(weatherData.weatherCode, lang).text}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="weather-metrics-grid">
+                  <div className="weather-metric">
+                    <span className="weather-metric-label">{t("weather.apparent")}</span>
+                    <span className="weather-metric-val">{weatherData.apparentTemperature}°C</span>
+                  </div>
+                  <div className="weather-metric">
+                    <span className="weather-metric-label">{t("weather.humidity")}</span>
+                    <span className="weather-metric-val">{weatherData.humidity}%</span>
+                  </div>
+                  <div className="weather-metric">
+                    <span className="weather-metric-label">{t("weather.wind")}</span>
+                    <span className="weather-metric-val">{weatherData.windSpeed} km/h</span>
+                  </div>
+                </div>
+
+                <p className="weather-source-note">
+                  {weatherData.source} · {t("time.atCapital", { city: data?.capital || name })}
+                </p>
+              </div>
+            ) : (
+              <p className="tab-empty-msg">{t("card.noData")}</p>
+            )}
+          </div>
+        )}
+
+        {/* TAB 4: VĂN HÓA & LỊCH SỬ (Wikipedia & Nager.Date) */}
+        {activeTab === "culture" && (
+          <div className="tab-pane-content">
+            {/* Tóm tắt Wikipedia */}
+            <div className="wiki-section">
+              <h3 className="section-subtitle">{t("culture.wikiSummary")}</h3>
+              {wikiData === null ? (
+                <div className="country-loading">
+                  <div className="loading-spinner"></div>
+                  <span>{t("card.loading")}</span>
+                </div>
+              ) : wikiData ? (
+                <div className="wiki-card">
+                  {wikiData.thumbnail && (
+                    <img
+                      src={wikiData.thumbnail}
+                      alt={wikiData.title}
+                      className="wiki-thumbnail"
+                      loading="lazy"
+                    />
+                  )}
+                  <p className="wiki-extract">{wikiData.extract}</p>
+                  {wikiData.pageUrl && (
+                    <a
+                      href={wikiData.pageUrl}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="wiki-link"
+                    >
+                      {t("culture.readMore")}
+                    </a>
+                  )}
+                  <span className="source-tag">{wikiData.source}</span>
+                </div>
+              ) : (
+                <p className="tab-empty-msg">{t("card.noData")}</p>
+              )}
+            </div>
+
+            {/* Ngày lễ quốc gia */}
+            <div className="holidays-section">
+              <h3 className="section-subtitle">{t("culture.holidays")}</h3>
+              {holidays === null ? (
+                <div className="country-loading">
+                  <div className="loading-spinner"></div>
+                </div>
+              ) : holidays.length > 0 ? (
+                <ul className="holidays-list">
+                  {holidays.map((h, idx) => (
+                    <li key={idx} className="holiday-item">
+                      <span className="holiday-date">{h.date}</span>
+                      <div className="holiday-info">
+                        <strong>{h.localName}</strong>
+                        {h.name !== h.localName && (
+                          <span className="holiday-en">{h.name}</span>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                  <li className="holiday-source-tag">Nager.Date (Public Domain)</li>
+                </ul>
+              ) : (
+                <p className="tab-empty-msg">{t("culture.noHolidays")}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: HÌNH ẢNH (Wikimedia Commons) */}
+        {activeTab === "media" && (
+          <div className="tab-pane-content">
+            <h3 className="section-subtitle">{t("media.heading")}</h3>
+            {photos === null ? (
+              <div className="country-loading">
+                <div className="loading-spinner"></div>
+                <span>{t("card.loading")}</span>
+              </div>
+            ) : photos.length > 0 ? (
+              <div className="photos-grid">
+                {photos.map((item) => (
+                  <figure key={item.id} className="photo-card">
+                    <img
+                      src={item.url}
+                      alt={item.title}
+                      className="photo-img"
+                      loading="lazy"
+                    />
+                    <figcaption className="photo-caption">
+                      <strong>{item.title}</strong>
+                      <span className="photo-meta">
+                        {t("media.by")} {item.artist} · {item.license}
+                      </span>
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            ) : (
+              <p className="tab-empty-msg">{t("media.noPhotos")}</p>
+            )}
+          </div>
+        )}
+
+        {/* Nút xem nguồn dữ liệu & giấy phép */}
+        <div className="country-card-footer">
+          <button
+            type="button"
+            className="sources-modal-trigger"
+            onClick={onOpenSources}
+          >
+            📋 {t("sources.button")}
+          </button>
         </div>
-      ) : (
-        <div className="country-info">
-          {country.disputed && <p className="country-notice">{t("card.disputed")}</p>}
-
-          {!country.apiCode && <p className="country-notice">{t("card.noIso")}</p>}
-
-          {details?.error && (
-            <p className="country-notice is-error">
-              {t("card.apiError")}{" "}
-              <button type="button" className="country-notice-retry" onClick={onRetry}>
-                {t("card.retry")}
-              </button>
-            </p>
-          )}
-
-          {details?.stale && (
-            <p className="country-notice">
-              {t("card.staleNotice", {
-                date: new Date(details.savedAt).toLocaleDateString(numberLocale(lang)),
-              })}
-            </p>
-          )}
-
-          {data ? (
-            <>
-              <InfoItem label={t("field.capital")} value={data.capital} />
-
-              <InfoItem
-                label={t("field.localTime")}
-                value={
-                  <LocalTime
-                    capital={data.capital}
-                    countryCode={country.apiCode}
-                    timezones={data.timezones}
-                  />
-                }
-              />
-
-              <InfoItem
-                label={t("field.population")}
-                value={
-                  hasValue(data.population) ? (
-                    <>
-                      <AnimatedNumber value={data.population} />
-                      <span className="unit"> {t("unit.people")}</span>
-                    </>
-                  ) : null
-                }
-              />
-
-              <InfoItem
-                label={t("field.area")}
-                value={
-                  hasValue(data.area) ? (
-                    <>
-                      <AnimatedNumber value={data.area} />
-                      <span className="unit"> {t("unit.km2")}</span>
-                    </>
-                  ) : null
-                }
-              />
-
-              <InfoItem
-                label={t("field.density")}
-                value={
-                  hasValue(data.populationDensity) ? (
-                    <>
-                      <AnimatedNumber value={data.populationDensity} />
-                      <span className="unit"> {t("unit.perKm2")}</span>
-                    </>
-                  ) : null
-                }
-              />
-
-              <InfoItem label={t("field.region")} value={place(data.region)} />
-
-              <InfoItem label={t("field.subregion")} value={place(data.subregion)} />
-
-              <InfoItem
-                label={t("field.neighbors")}
-                value={<Neighbors neighbors={neighbors} onSelect={onSelectNeighbor} />}
-                wide
-              />
-
-              <InfoItem label={t("field.currencies")} value={currencies} />
-
-              <InfoItem label={t("field.languages")} value={languages} />
-
-              <InfoItem label={t("field.timezones")} value={data.timezones?.join(", ")} />
-
-              <InfoItem label={t("field.callingCode")} value={callingCodes} />
-
-              <InfoItem label={t("field.nativeName")} value={data.nativeName} />
-            </>
-          ) : (
-            // Không có dữ liệu API: dùng dữ liệu cơ bản trong bản đồ.
-            <>
-              <InfoItem label={t("field.continent")} value={place(country.continent)} />
-
-              <InfoItem label={t("field.subregion")} value={place(country.subregion)} />
-
-              <InfoItem
-                label={t("field.populationEst", { year: country.popYear ?? "?" })}
-                value={
-                  hasValue(country.popEst) ? (
-                    <>
-                      <AnimatedNumber value={country.popEst} />
-                      <span className="unit"> {t("unit.people")}</span>
-                    </>
-                  ) : null
-                }
-              />
-            </>
-          )}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -355,7 +699,6 @@ function InfoItem({ label, value, wide = false }) {
   return (
     <div className={"country-info-item" + (wide ? " is-wide" : "")}>
       <div className="country-info-label">{label}</div>
-
       <div className="country-info-value">{value || t("card.noData")}</div>
     </div>
   );

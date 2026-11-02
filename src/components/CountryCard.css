@@ -544,3 +544,367 @@
     font-size: 24px;
   }
 }
+
+/* ==============================
+   TABS BAR
+================================ */
+
+.country-card-tabs {
+  display: flex;
+  overflow-x: auto;
+  padding: 6px 12px;
+  gap: 4px;
+  background: rgba(125, 125, 125, 0.08);
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.country-card-tabs::-webkit-scrollbar {
+  height: 3px;
+}
+
+.country-card-tabs::-webkit-scrollbar-thumb {
+  background: rgba(125, 125, 125, 0.3);
+  border-radius: 4px;
+}
+
+.country-tab-btn {
+  flex-shrink: 0;
+  padding: 6px 11px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, rgba(255, 255, 255, 0.65));
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.country-tab-btn:hover {
+  color: var(--text-primary, #ffffff);
+  background: rgba(125, 125, 125, 0.15);
+}
+
+.country-tab-btn.is-active {
+  color: var(--text-primary, #ffffff);
+  background: var(--accent-soft, rgba(51, 154, 240, 0.2));
+  font-weight: 700;
+}
+
+.country-tab-btn:focus-visible {
+  outline: 2px solid var(--accent, #339af0);
+  outline-offset: 1px;
+}
+
+/* ==============================
+   TAB PANE COMMON
+================================ */
+
+.tab-pane-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 4px;
+}
+
+.section-subtitle {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, rgba(255, 255, 255, 0.65));
+  margin: 4px 0 8px;
+}
+
+.tab-empty-msg {
+  font-size: 13px;
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+  text-align: center;
+  padding: 24px 12px;
+  margin: 0;
+}
+
+.source-tag {
+  display: inline-block;
+  font-size: 11px;
+  color: var(--text-muted, rgba(255, 255, 255, 0.55));
+  margin-top: 6px;
+}
+
+/* ==============================
+   WORLD BANK METRICS
+================================ */
+
+.wb-metric-card {
+  padding: 11px 13px;
+  background: rgba(125, 125, 125, 0.06);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wb-metric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.wb-metric-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.75));
+}
+
+.wb-metric-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+}
+
+.wb-metric-year {
+  font-size: 11px;
+  color: var(--text-muted, rgba(255, 255, 255, 0.55));
+}
+
+/* ==============================
+   WEATHER CARD
+================================ */
+
+.weather-card {
+  padding: 16px;
+  background: rgba(125, 125, 125, 0.08);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.weather-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.weather-icon {
+  font-size: 38px;
+  line-height: 1;
+}
+
+.weather-temp-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.weather-temp {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--text-primary, #ffffff);
+}
+
+.weather-desc {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.8));
+}
+
+.weather-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.weather-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2px;
+}
+
+.weather-metric-label {
+  font-size: 11px;
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+}
+
+.weather-metric-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+}
+
+.weather-source-note {
+  font-size: 11px;
+  color: var(--text-muted, rgba(255, 255, 255, 0.55));
+  margin: 0;
+  text-align: center;
+}
+
+/* ==============================
+   WIKIPEDIA & HOLIDAYS
+================================ */
+
+.wiki-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(125, 125, 125, 0.06);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+}
+
+.wiki-thumbnail {
+  width: 100%;
+  max-height: 140px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+}
+
+.wiki-extract {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.85));
+  margin: 0;
+}
+
+.wiki-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent, #339af0);
+  text-decoration: none;
+}
+
+.wiki-link:hover {
+  text-decoration: underline;
+}
+
+.holidays-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.holiday-item {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 10px;
+  background: rgba(125, 125, 125, 0.06);
+  border-radius: 8px;
+}
+
+.holiday-date {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent, #339af0);
+  flex-shrink: 0;
+}
+
+.holiday-info {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+}
+
+.holiday-en {
+  font-size: 11px;
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+}
+
+.holiday-source-tag {
+  font-size: 11px;
+  color: var(--text-muted, rgba(255, 255, 255, 0.5));
+  text-align: right;
+}
+
+/* ==============================
+   MEDIA / PHOTOS GRID
+================================ */
+
+.photos-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.photo-card {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  background: rgba(125, 125, 125, 0.08);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.photo-img {
+  width: 100%;
+  height: 96px;
+  object-fit: cover;
+}
+
+.photo-caption {
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.photo-caption strong {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-primary, #ffffff);
+}
+
+.photo-meta {
+  font-size: 10px;
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==============================
+   FOOTER SOURCES TRIGGER
+================================ */
+
+.country-card-footer {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  text-align: center;
+}
+
+.sources-modal-trigger {
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent, #339af0);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.sources-modal-trigger:hover {
+  background: rgba(125, 125, 125, 0.12);
+  text-decoration: underline;
+}

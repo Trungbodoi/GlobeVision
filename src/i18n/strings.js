@@ -26,6 +26,12 @@ export const STRINGS = {
     "card.disputed":
       "Vùng có vị thế chính trị hoặc ranh giới đang tranh chấp. Thông tin hiển thị không thể hiện quan điểm về chủ quyền.",
 
+    "tab.overview": "Tổng quan",
+    "tab.economy": "Kinh tế - Xã hội",
+    "tab.climate": "Khí hậu",
+    "tab.culture": "Văn hóa",
+    "tab.media": "Hình ảnh",
+
     "field.capital": "Thủ đô",
     "field.population": "Dân số",
     "field.populationEst": "Dân số ước tính ({year})",
@@ -41,6 +47,28 @@ export const STRINGS = {
     "field.nativeName": "Tên bản địa",
     "field.callingCode": "Mã điện thoại",
     "field.neighbors": "Láng giềng",
+
+    "wb.gdp": "GDP bình quân đầu người",
+    "wb.lifeExpectancy": "Tuổi thọ trung bình",
+    "wb.urbanRate": "Tỷ lệ đô thị hóa",
+    "wb.co2": "Phát thải CO2 bình quân",
+    "wb.literacy": "Tỷ lệ biết chữ người lớn",
+    "wb.trend": "Xu hướng gần đây",
+
+    "weather.capitalHeading": "Thời tiết tại {capital}",
+    "weather.temperature": "Nhiệt độ hiện tại",
+    "weather.apparent": "Cảm nhận thực tế",
+    "weather.humidity": "Độ ẩm",
+    "weather.wind": "Tốc độ gió",
+
+    "culture.wikiSummary": "Bách khoa toàn thư",
+    "culture.readMore": "Đọc bài viết gốc trên Wikipedia ↗",
+    "culture.holidays": "Ngày lễ quốc gia sắp tới",
+    "culture.noHolidays": "Chưa có thông tin ngày lễ sắp tới",
+
+    "media.heading": "Danh lam & Thắng cảnh",
+    "media.noPhotos": "Chưa có hình ảnh từ kho tư liệu mở",
+    "media.by": "Ảnh:",
 
     "compare.add": "+ So sánh",
     "compare.remove": "✓ Đang so sánh",
@@ -85,8 +113,10 @@ export const STRINGS = {
     "controls.shortcutsReset": "Về góc nhìn ban đầu: Phím Home hoặc R",
     "controls.shortcutsClose": "Đóng bảng / thẻ: Phím Escape",
 
+    "sources.button": "Nguồn dữ liệu & Giấy phép",
+    "sources.viewDetails": "Xem giấy phép chi tiết",
     "footer.sources":
-      "Bản đồ: Natural Earth · Thông tin quốc gia: GeoNames (CC BY 4.0) qua countries.dev · Ranh giới hiển thị không thể hiện quan điểm về chủ quyền.",
+      "Bản đồ: Natural Earth · Dữ liệu: GeoNames, Wikipedia, World Bank, Open-Meteo, Nager.Date, Commons · Ranh giới hiển thị không thể hiện quan điểm về chủ quyền.",
   },
 
   en: {
@@ -111,6 +141,12 @@ export const STRINGS = {
     "card.disputed":
       "This area has a disputed political status or borders. The information shown does not imply any position on sovereignty.",
 
+    "tab.overview": "Overview",
+    "tab.economy": "Economy & Society",
+    "tab.climate": "Climate",
+    "tab.culture": "Culture",
+    "tab.media": "Media",
+
     "field.capital": "Capital",
     "field.population": "Population",
     "field.populationEst": "Est. population ({year})",
@@ -126,6 +162,28 @@ export const STRINGS = {
     "field.nativeName": "Native name",
     "field.callingCode": "Calling code",
     "field.neighbors": "Neighbors",
+
+    "wb.gdp": "GDP per capita",
+    "wb.lifeExpectancy": "Life expectancy",
+    "wb.urbanRate": "Urbanization rate",
+    "wb.co2": "CO2 emissions per capita",
+    "wb.literacy": "Adult literacy rate",
+    "wb.trend": "Recent trend",
+
+    "weather.capitalHeading": "Weather in {capital}",
+    "weather.temperature": "Current temperature",
+    "weather.apparent": "Feels like",
+    "weather.humidity": "Humidity",
+    "weather.wind": "Wind speed",
+
+    "culture.wikiSummary": "Encyclopedia",
+    "culture.readMore": "Read full article on Wikipedia ↗",
+    "culture.holidays": "Upcoming Public Holidays",
+    "culture.noHolidays": "No upcoming holidays data available",
+
+    "media.heading": "Landmarks & Scenery",
+    "media.noPhotos": "No photos available from open archive",
+    "media.by": "Photo by:",
 
     "compare.add": "+ Compare",
     "compare.remove": "✓ Comparing",
@@ -170,8 +228,10 @@ export const STRINGS = {
     "controls.shortcutsReset": "Reset view: Home or R key",
     "controls.shortcutsClose": "Close dialog / card: Escape key",
 
+    "sources.button": "Data Sources & Licenses",
+    "sources.viewDetails": "View licensing details",
     "footer.sources":
-      "Map: Natural Earth · Country data: GeoNames (CC BY 4.0) via countries.dev · Borders shown do not imply any position on sovereignty.",
+      "Map: Natural Earth · Data: GeoNames, Wikipedia, World Bank, Open-Meteo, Nager.Date, Commons · Borders shown do not imply any position on sovereignty.",
   },
 };
 
