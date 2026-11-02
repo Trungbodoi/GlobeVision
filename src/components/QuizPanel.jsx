@@ -147,45 +147,41 @@ function Setup({ onStart, onClose, onOpenMastery }) {
 function Playing({ quiz, pick, onPick, onKindChange, onFinished, onClose }) {
   const { lang, t } = useI18n();
   const [index, setIndex] = useState(0);
-  const [answers, setAnswers] = useState([]);
-  const [optionIndex, setOptionIndex] = useState(null);
+  // Đáp án theo id câu hỏi, để quay lại vẫn thấy và đổi được lựa chọn.
+  const [answers, setAnswers] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [failed, setFailed] = useState(false);
 
   const question = quiz.questions[index];
   const isLast = index === quiz.questions.length - 1;
   const isLocate = isLocateKind(question.kind);
+  const optionIndex = answers[question.id]?.option_index ?? null;
   const hasAnswer = isLocate ? Boolean(pick) : optionIndex !== null;
+  const answersWithCurrent =
+    isLocate && pick
+      ? { ...answers, [question.id]: { question_id: question.id, answer_id: pick } }
+      : answers;
+  const unanswered = quiz.questions.length - Object.keys(answersWithCurrent).length;
 
-  async function submit(allAnswers) {
+  async function submit() {
     setSubmitting(true);
     setFailed(false);
 
     try {
-      onFinished(await submitQuiz(quiz.attempt_id, allAnswers));
+      onFinished(await submitQuiz(quiz.attempt_id, Object.values(answersWithCurrent)));
     } catch {
       setFailed(true);
       setSubmitting(false);
     }
   }
 
-  function goNext() {
-    const answer =
-      isLocate
-        ? { question_id: question.id, answer_id: pick }
-        : { question_id: question.id, option_index: optionIndex };
-    const allAnswers = hasAnswer ? [...answers, answer] : answers;
+  function goTo(nextIndex) {
+    const nextQuestion = quiz.questions[nextIndex];
 
-    setAnswers(allAnswers);
-    setOptionIndex(null);
-    onPick(null);
-
-    if (isLast) {
-      submit(allAnswers);
-    } else {
-      setIndex(index + 1);
-      onKindChange(quiz.questions[index + 1].kind);
-    }
+    setAnswers(answersWithCurrent);
+    setIndex(nextIndex);
+    onKindChange(nextQuestion.kind);
+    onPick(answersWithCurrent[nextQuestion.id]?.answer_id ?? null);
   }
 
   const name = localized(question, "", lang);
@@ -224,7 +220,12 @@ function Playing({ quiz, pick, onPick, onKindChange, onFinished, onClose }) {
               type="button"
               className={"quiz-option" + (optionIndex === position ? " is-selected" : "")}
               aria-pressed={optionIndex === position}
-              onClick={() => setOptionIndex(position)}
+              onClick={() =>
+                setAnswers({
+                  ...answers,
+                  [question.id]: { question_id: question.id, option_index: position },
+                })
+              }
             >
               {option.label ?? localized(option, "", lang)}
             </button>
@@ -234,15 +235,30 @@ function Playing({ quiz, pick, onPick, onKindChange, onFinished, onClose }) {
 
       {failed && <p className="quiz-error" role="status">{t("auth.errorGeneric")}</p>}
 
-      {failed ? (
-        <button type="button" className="quiz-primary" onClick={() => submit(answers)} disabled={submitting}>
-          {t("card.retry")}
-        </button>
-      ) : (
-        <button type="button" className="quiz-primary" onClick={goNext} disabled={submitting}>
-          {!hasAnswer ? t("quiz.skip") : isLast ? t("quiz.submit") : t("quiz.next")}
-        </button>
+      {isLast && unanswered > 0 && (
+        <p className="quiz-hint" role="status">{t("quiz.unanswered", { count: unanswered })}</p>
       )}
+
+      <div className="quiz-nav">
+        <button
+          type="button"
+          className="quiz-secondary"
+          onClick={() => goTo(index - 1)}
+          disabled={index === 0 || submitting}
+        >
+          {t("quiz.previous")}
+        </button>
+
+        {isLast ? (
+          <button type="button" className="quiz-primary" onClick={submit} disabled={submitting}>
+            {failed ? t("card.retry") : t("quiz.submit")}
+          </button>
+        ) : (
+          <button type="button" className="quiz-primary" onClick={() => goTo(index + 1)} disabled={submitting}>
+            {hasAnswer ? t("quiz.next") : t("quiz.skip")}
+          </button>
+        )}
+      </div>
     </section>
   );
 }

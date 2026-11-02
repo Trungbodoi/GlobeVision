@@ -355,3 +355,14 @@
 
   cursor: pointer;
 }
+
+.quiz-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.quiz-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
