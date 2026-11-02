@@ -22,6 +22,7 @@ import CountrySearch from "./CountrySearch";
 import CompareTray from "./CompareTray";
 import ComparePanel from "./ComparePanel";
 import QuizPanel from "./QuizPanel";
+import ClassroomPanel from "./ClassroomPanel";
 import "./WorldGlobe.css";
 
 // Chiều rộng thẻ thông tin + lề (xem CountryCard.css).
@@ -60,6 +61,8 @@ function WorldGlobe({ onProgress, onLoaded }) {
   const [compareIds, setCompareIds] = useState([]);
   const [compareOpen, setCompareOpen] = useState(false);
   const [quizOpen, setQuizOpen] = useState(false);
+  const [quizAssignment, setQuizAssignment] = useState(null);
+  const [classroomOpen, setClassroomOpen] = useState(false);
   // Dạng câu hỏi đang làm, "review" khi xem lại, null khi không làm quiz.
   const [quizKind, setQuizKind] = useState(null);
   const [quizPick, setQuizPick] = useState(null);
@@ -111,6 +114,7 @@ function WorldGlobe({ onProgress, onLoaded }) {
   );
 
   const closeCompare = useCallback(() => setCompareOpen(false), []);
+  const closeClassroom = useCallback(() => setClassroomOpen(false), []);
 
   // ----------------------------------------------------------------
   // Khởi tạo địa cầu (chạy một lần)
@@ -462,8 +466,21 @@ function WorldGlobe({ onProgress, onLoaded }) {
     setQuizOpen(true);
   }
 
+  function openClassroom() {
+    closeCountry();
+    setCompareOpen(false);
+    setClassroomOpen(true);
+  }
+
+  function startAssignedQuiz(assignment) {
+    setClassroomOpen(false);
+    setQuizAssignment(assignment);
+    setQuizOpen(true);
+  }
+
   function closeQuiz() {
     setQuizOpen(false);
+    setQuizAssignment(null);
     setQuizKind(null);
     setQuizPick(null);
   }
@@ -488,11 +505,14 @@ function WorldGlobe({ onProgress, onLoaded }) {
           countries={countryData.list}
           onSelect={selectCountry}
           onOpenQuiz={openQuiz}
+          onOpenClassroom={openClassroom}
         />
       )}
 
       {quizOpen && (
         <QuizPanel
+          key={quizAssignment?.id ?? "personal"}
+          assignment={quizAssignment}
           pick={quizPick}
           onPick={setQuizPick}
           onKindChange={setQuizKind}
@@ -513,6 +533,13 @@ function WorldGlobe({ onProgress, onLoaded }) {
         compareIds={compareIds}
         onToggleCompare={toggleCompare}
       />
+
+      {classroomOpen && (
+        <ClassroomPanel
+          onClose={closeClassroom}
+          onStartAssignment={startAssignedQuiz}
+        />
+      )}
 
       <CompareTray
         countries={quizOpen ? [] : compareCountries}

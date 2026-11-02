@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { getQuizHistory, startQuiz, submitQuiz } from "../services/quizApi";
+import { startAssignment } from "../services/classroomApi";
+import { REGIONS, QUIZ_KINDS as KINDS } from "../data/quiz";
 import { numberLocale } from "../utils/format";
 import "./QuizPanel.css";
-
-const REGIONS = ["Africa", "Americas", "Asia", "Europe", "Oceania"];
-const KINDS = ["locate", "flag", "capital"];
 
 function localized(item, prefix, lang) {
   return item[`${prefix}name_${lang}`];
@@ -262,15 +261,78 @@ function Result({ result, onReview, onAgain, onClose }) {
         ))}
       </ol>
 
-      <button type="button" className="quiz-primary" onClick={onAgain}>
-        {t("quiz.again")}
-      </button>
+      {onAgain && (
+        <button type="button" className="quiz-primary" onClick={onAgain}>
+          {t("quiz.again")}
+        </button>
+      )}
     </section>
   );
 }
 
-function QuizPanel({ pick, onPick, onKindChange, onReview, onClose }) {
-  const [stage, setStage] = useState({ name: "setup" });
+// Mở bài được giao: máy chủ phát đề ngay, tính là một lần làm.
+function AssignmentLoader({ assignment, onStart, onClose }) {
+  const { t } = useI18n();
+  const [errorKey, setErrorKey] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    startAssignment(assignment.id)
+      .then((quiz) => {
+        if (!cancelled) onStart(quiz);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+
+        const message = error?.message ?? "";
+
+        if (/past_due/.test(message)) setErrorKey("class.closed");
+        else if (/no_attempts_left/.test(message)) setErrorKey("class.noAttemptsLeft");
+        else setErrorKey("auth.errorGeneric");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // Chỉ phát đề một lần cho mỗi bài.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignment.id]);
+
+  return (
+    <div className="quiz-overlay">
+      <div className="quiz-dialog" role="dialog" aria-modal="true" aria-label={assignment.title}>
+        <header className="quiz-header">
+          <h2>{assignment.title}</h2>
+          <button type="button" className="quiz-close" onClick={onClose} aria-label={t("card.close")}>
+            ×
+          </button>
+        </header>
+        {errorKey ? (
+          <p className="quiz-error" role="status">{t(errorKey)}</p>
+        ) : (
+          <p className="quiz-hint">{t("card.loading")}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function QuizPanel({ assignment, pick, onPick, onKindChange, onReview, onClose }) {
+  const [stage, setStage] = useState({ name: assignment ? "assignment" : "setup" });
+
+  if (stage.name === "assignment") {
+    return (
+      <AssignmentLoader
+        assignment={assignment}
+        onClose={onClose}
+        onStart={(quiz) => {
+          onKindChange(quiz.questions[0].kind);
+          setStage({ name: "playing", quiz });
+        }}
+      />
+    );
+  }
 
   if (stage.name === "setup") {
     return (
@@ -305,11 +367,15 @@ function QuizPanel({ pick, onPick, onKindChange, onReview, onClose }) {
       result={stage.result}
       onReview={onReview}
       onClose={onClose}
-      onAgain={() => {
-        onKindChange(null);
-        onPick(null);
-        setStage({ name: "setup" });
-      }}
+      onAgain={
+        assignment
+          ? null
+          : () => {
+              onKindChange(null);
+              onPick(null);
+              setStage({ name: "setup" });
+            }
+      }
     />
   );
 }
