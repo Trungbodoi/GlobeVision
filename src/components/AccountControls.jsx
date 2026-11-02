@@ -64,7 +64,7 @@ function AuthDialog({ onClose }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
 
-  // Quay lại đúng trang đang xem sau khi xác nhận email / đăng nhập Google.
+  // Quay lại đúng trang đang xem sau khi bấm liên kết trong email.
   const redirectTo = window.location.href;
 
   function switchMode(next) {
@@ -113,17 +113,6 @@ function AuthDialog({ onClose }) {
 
         setMessage({ type: "info", text: t("auth.resetSent") });
       }
-    });
-  }
-
-  function signInWithGoogle() {
-    run(async () => {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo },
-      });
-
-      if (error) throw error;
     });
   }
 
@@ -180,12 +169,6 @@ function AuthDialog({ onClose }) {
           {t(`auth.submit.${mode}`)}
         </button>
       </form>
-
-      {mode !== "reset" && (
-        <button type="button" className="auth-secondary" onClick={signInWithGoogle} disabled={busy}>
-          {t("auth.google")}
-        </button>
-      )}
 
       <div className="auth-links">
         {mode === "signIn" && (

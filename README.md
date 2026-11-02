@@ -48,7 +48,6 @@ Phần tra cứu địa cầu chạy được mà không cần backend. Nút đ�
 2. Trong SQL Editor, chạy lần lượt các file trong `supabase/migrations/` theo thứ tự tên file.
 3. Sao chép `.env.example` thành `.env.local`, điền URL và anon key lấy từ Project Settings > API.
 4. Trong Authentication > URL Configuration, đặt Site URL và thêm `http://localhost:5173/GlobeVision/**` cùng địa chỉ website thật vào Redirect URLs.
-5. Muốn đăng nhập bằng Google: bật provider Google trong Authentication > Providers.
 
 Khi triển khai, thêm `VITE_SUPABASE_URL` và `VITE_SUPABASE_ANON_KEY` vào GitHub: Settings > Secrets and variables > Actions > Variables.
 
