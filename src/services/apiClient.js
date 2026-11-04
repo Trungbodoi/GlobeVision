@@ -125,6 +125,7 @@ async function fetchWithRetry(url, options = {}, retries = DEFAULT_RETRIES, time
  * @param {number} [options.timeoutMs] - Thời gian timeout mỗi lần thử (ms)
  * @param {number} [options.retries] - Số lần thử lại tối đa (mặc định: 2)
  * @param {RequestInit} [options.fetchOptions] - Các option fetch
+ * @param {(data: any) => string|null} [options.getResponseError] - Trích xuất lỗi từ payload thành công
  * @returns {Promise<{ data: any, stale: boolean, savedAt: number, fromCache: boolean }>}
  */
 export async function apiRequest(cacheKey, url, options = {}) {
@@ -133,6 +134,7 @@ export async function apiRequest(cacheKey, url, options = {}) {
     timeoutMs = DEFAULT_TIMEOUT_MS,
     retries = DEFAULT_RETRIES,
     fetchOptions = {},
+    getResponseError = () => null,
   } = options;
 
   const now = Date.now();
@@ -157,6 +159,9 @@ export async function apiRequest(cacheKey, url, options = {}) {
   // 3. Gọi API nếu cache đã hết hạn hoặc chưa có
   try {
     const data = await fetchWithRetry(url, fetchOptions, retries, timeoutMs);
+    const responseError = getResponseError(data);
+    if (responseError) throw new Error(responseError);
+
     const entry = {
       savedAt: now,
       expiresAt: now + ttlMs,

@@ -5,11 +5,11 @@ import { getCountryWikiSummary } from "../services/wikiApi";
 import { getCountryWorldBankData } from "../services/worldBankApi";
 import { getCapitalWeather, getWeatherDescription } from "../services/weatherApi";
 import { getNextPublicHolidays } from "../services/holidayApi";
-import { getCountryLandmarkPhotos } from "../services/mediaApi";
 import { useI18n } from "../i18n/useI18n";
 import { MAX_COMPARE } from "../data/compare";
 import ShareButton from "./ShareButton";
 import SparklineChart from "./SparklineChart";
+import Icon from "./Icon";
 import {
   formatCallingCodes,
   formatCurrencies,
@@ -152,6 +152,7 @@ function CountryCard({
   details,
   loading,
   neighbors,
+  onNeighborVisibilityChange,
   onSelectNeighbor,
   onRetry,
   onClose,
@@ -161,13 +162,13 @@ function CountryCard({
 }) {
   const { lang, t, place } = useI18n();
   const [activeTab, setActiveTab] = useState("overview");
+  const [showNeighbors, setShowNeighbors] = useState(true);
 
   // State các nguồn mở rộng (Phase 2)
   const [wikiData, setWikiData] = useState(null);
   const [wbData, setWbData] = useState(null);
   const [weatherData, setWeatherData] = useState(null);
   const [holidays, setHolidays] = useState(null);
-  const [photos, setPhotos] = useState(null);
 
   // Lazy Fetching khi chuyển tab
   useEffect(() => {
@@ -197,18 +198,12 @@ function CountryCard({
           if (!cancelled) setWeatherData(res || false);
         });
       }
-    } else if (activeTab === "media") {
-      if (photos === null) {
-        getCountryLandmarkPhotos(country.nameEn).then((res) => {
-          if (!cancelled) setPhotos(res || []);
-        });
-      }
     }
 
     return () => {
       cancelled = true;
     };
-  }, [activeTab, country, wikiData, holidays, wbData, weatherData, photos]);
+  }, [activeTab, country, wikiData, holidays, wbData, weatherData]);
 
   if (!country) return null;
 
@@ -234,7 +229,7 @@ function CountryCard({
         }}
         aria-label={t("card.close")}
       >
-        ×
+        <Icon name="X" size={18} />
       </button>
 
       {/* Header */}
@@ -260,6 +255,7 @@ function CountryCard({
             aria-pressed={inCompare}
             title={compareFull ? t("compare.full", { max: MAX_COMPARE }) : undefined}
           >
+            {inCompare && <Icon name="Check" size={16} />}
             {inCompare ? t("compare.remove") : t("compare.add")}
           </button>
 
@@ -267,8 +263,8 @@ function CountryCard({
         </div>
       </div>
 
-      {/* Tab Bar Điều Hướng 5 Mục */}
-      <nav className="country-card-tabs" aria-label="Country detail tabs">
+      {/* Tab Bar Điều Hướng */}
+      <nav className="country-card-tabs" aria-label={t("tab.navigationLabel")}>
         <button
           type="button"
           className={"country-tab-btn" + (activeTab === "overview" ? " is-active" : "")}
@@ -296,13 +292,6 @@ function CountryCard({
           onClick={() => setActiveTab("culture")}
         >
           {t("tab.culture")}
-        </button>
-        <button
-          type="button"
-          className={"country-tab-btn" + (activeTab === "media" ? " is-active" : "")}
-          onClick={() => setActiveTab("media")}
-        >
-          {t("tab.media")}
         </button>
       </nav>
 
@@ -386,7 +375,27 @@ function CountryCard({
                 <InfoItem label={t("field.subregion")} value={place(data.subregion)} />
                 <InfoItem
                   label={t("field.neighbors")}
-                  value={<Neighbors neighbors={neighbors} onSelect={onSelectNeighbor} />}
+                  value={
+                    <div className="country-neighbors-control">
+                      <button
+                        type="button"
+                        className="country-neighbors-toggle"
+                        aria-expanded={showNeighbors}
+                        onClick={() => {
+                          setShowNeighbors((visible) => {
+                            onNeighborVisibilityChange?.(!visible);
+                            return !visible;
+                          });
+                        }}
+                      >
+                        <Icon name={showNeighbors ? "EyeOff" : "Eye"} size={15} />
+                        {t(showNeighbors ? "neighbors.hide" : "neighbors.show")}
+                      </button>
+                      {showNeighbors && (
+                        <Neighbors neighbors={neighbors} onSelect={onSelectNeighbor} />
+                      )}
+                    </div>
+                  }
                   wide
                 />
                 <InfoItem label={t("field.currencies")} value={currencies} />
@@ -436,7 +445,7 @@ function CountryCard({
                   </div>
                   {wbData.gdpPerCapita?.latest && (
                     <span className="wb-metric-year">
-                      {lang === "vi" ? `Năm ${wbData.gdpPerCapita.latest.year}` : `Year ${wbData.gdpPerCapita.latest.year}`} · World Bank
+                      {t("wb.year", { year: wbData.gdpPerCapita.latest.year })} · World Bank
                     </span>
                   )}
                   {wbData.gdpPerCapita?.history?.length > 1 && (
@@ -454,19 +463,19 @@ function CountryCard({
                     <span className="wb-metric-label">{t("wb.lifeExpectancy")}</span>
                     <span className="wb-metric-value">
                       {wbData.lifeExpectancy?.latest
-                        ? `${wbData.lifeExpectancy.latest.value.toFixed(1)} ${lang === "vi" ? "năm" : "years"}`
+                        ? `${wbData.lifeExpectancy.latest.value.toFixed(1)} ${t("unit.years")}`
                         : t("card.noData")}
                     </span>
                   </div>
                   {wbData.lifeExpectancy?.latest && (
                     <span className="wb-metric-year">
-                      {lang === "vi" ? `Năm ${wbData.lifeExpectancy.latest.year}` : `Year ${wbData.lifeExpectancy.latest.year}`} · World Bank
+                      {t("wb.year", { year: wbData.lifeExpectancy.latest.year })} · World Bank
                     </span>
                   )}
                   {wbData.lifeExpectancy?.history?.length > 1 && (
                     <SparklineChart
                       history={wbData.lifeExpectancy.history}
-                      unit={lang === "vi" ? "năm" : "yrs"}
+                      unit={t("unit.yearsShort")}
                       color="#20c997"
                     />
                   )}
@@ -484,7 +493,7 @@ function CountryCard({
                   </div>
                   {wbData.urbanPopulationRate?.latest && (
                     <span className="wb-metric-year">
-                      {lang === "vi" ? `Năm ${wbData.urbanPopulationRate.latest.year}` : `Year ${wbData.urbanPopulationRate.latest.year}`} · World Bank
+                      {t("wb.year", { year: wbData.urbanPopulationRate.latest.year })} · World Bank
                     </span>
                   )}
                 </div>
@@ -495,13 +504,13 @@ function CountryCard({
                     <span className="wb-metric-label">{t("wb.co2")}</span>
                     <span className="wb-metric-value">
                       {wbData.co2PerCapita?.latest
-                        ? `${wbData.co2PerCapita.latest.value.toFixed(2)} ${lang === "vi" ? "tấn" : "tons"}`
+                        ? `${wbData.co2PerCapita.latest.value.toFixed(2)} ${t("unit.tons")}`
                         : t("card.noData")}
                     </span>
                   </div>
                   {wbData.co2PerCapita?.latest && (
                     <span className="wb-metric-year">
-                      {lang === "vi" ? `Năm ${wbData.co2PerCapita.latest.year}` : `Year ${wbData.co2PerCapita.latest.year}`} · World Bank
+                      {t("wb.year", { year: wbData.co2PerCapita.latest.year })} · World Bank
                     </span>
                   )}
                 </div>
@@ -518,7 +527,7 @@ function CountryCard({
                   </div>
                   {wbData.literacyRate?.latest && (
                     <span className="wb-metric-year">
-                      {lang === "vi" ? `Năm ${wbData.literacyRate.latest.year}` : `Year ${wbData.literacyRate.latest.year}`} · World Bank
+                      {t("wb.year", { year: wbData.literacyRate.latest.year })} · World Bank
                     </span>
                   )}
                 </div>
@@ -541,12 +550,12 @@ function CountryCard({
               <div className="weather-card">
                 <div className="weather-hero">
                   <span className="weather-icon" aria-hidden="true">
-                    {getWeatherDescription(weatherData.weatherCode, lang).icon}
+                    <Icon name={getWeatherDescription(weatherData.weatherCode).icon} size={26} />
                   </span>
                   <div className="weather-temp-wrap">
                     <span className="weather-temp">{weatherData.temperature}°C</span>
                     <span className="weather-desc">
-                      {getWeatherDescription(weatherData.weatherCode, lang).text}
+                      {t(getWeatherDescription(weatherData.weatherCode).labelKey)}
                     </span>
                   </div>
                 </div>
@@ -606,6 +615,7 @@ function CountryCard({
                       className="wiki-link"
                     >
                       {t("culture.readMore")}
+                      <Icon name="ArrowUpRight" size={15} />
                     </a>
                   )}
                   <span className="source-tag">{wikiData.source}</span>
@@ -635,46 +645,12 @@ function CountryCard({
                       </div>
                     </li>
                   ))}
-                  <li className="holiday-source-tag">Nager.Date (Public Domain)</li>
+                  <li className="holiday-source-tag">{t("culture.holidaySource")}</li>
                 </ul>
               ) : (
                 <p className="tab-empty-msg">{t("culture.noHolidays")}</p>
               )}
             </div>
-          </div>
-        )}
-
-        {/* TAB 5: HÌNH ẢNH (Wikimedia Commons) */}
-        {activeTab === "media" && (
-          <div className="tab-pane-content">
-            <h3 className="section-subtitle">{t("media.heading")}</h3>
-            {photos === null ? (
-              <div className="country-loading">
-                <div className="loading-spinner"></div>
-                <span>{t("card.loading")}</span>
-              </div>
-            ) : photos.length > 0 ? (
-              <div className="photos-grid">
-                {photos.map((item) => (
-                  <figure key={item.id} className="photo-card">
-                    <img
-                      src={item.url}
-                      alt={item.title}
-                      className="photo-img"
-                      loading="lazy"
-                    />
-                    <figcaption className="photo-caption">
-                      <strong>{item.title}</strong>
-                      <span className="photo-meta">
-                        {t("media.by")} {item.artist} · {item.license}
-                      </span>
-                    </figcaption>
-                  </figure>
-                ))}
-              </div>
-            ) : (
-              <p className="tab-empty-msg">{t("media.noPhotos")}</p>
-            )}
           </div>
         )}
 
@@ -685,7 +661,8 @@ function CountryCard({
             className="sources-modal-trigger"
             onClick={onOpenSources}
           >
-            📋 {t("sources.button")}
+            <Icon name="Database" size={16} />
+            {t("sources.button")}
           </button>
         </div>
       </div>

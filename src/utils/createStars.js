@@ -26,6 +26,9 @@ export function createStars(globe, scene) {
       uCameraPosition: {
         value: globe.camera().position.clone(),
       },
+      uOpacity: {
+        value: 0.7,
+      },
     },
     vertexShader: `
       uniform vec3 uCameraPosition;
@@ -46,6 +49,7 @@ export function createStars(globe, scene) {
       }
     `,
     fragmentShader: `
+      uniform float uOpacity;
       varying float vFront;
 
       void main() {
@@ -60,11 +64,9 @@ export function createStars(globe, scene) {
           discard;
         }
 
-        gl_FragColor = vec4(1.0, 1.0, 1.0, 0.8);
+        gl_FragColor = vec4(1.0, 1.0, 1.0, uOpacity);
       }
     `,
-    size: 0.5,
-    opacity: 0.7,
     transparent: true,
     depthWrite: false,
     depthTest: true,

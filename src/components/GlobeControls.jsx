@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useI18n } from "../i18n/useI18n";
+import Icon from "./Icon";
 import "./GlobeControls.css";
 
 function GlobeControls({
@@ -15,8 +16,8 @@ function GlobeControls({
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   return (
-    <aside className="globe-controls" aria-label="Globe navigation controls">
-      <div className="globe-controls-group">
+    <aside className="globe-controls" aria-label={t("controls.globeNavigation")}>
+      <div className="globe-controls-group" role="group" aria-label={t("controls.globeNavigation")}>
         <button
           type="button"
           className="globe-ctrl-btn"
@@ -24,9 +25,7 @@ function GlobeControls({
           aria-label={t("controls.zoomIn")}
           title={t("controls.zoomIn")}
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
+          <Icon name="Plus" size={19} />
         </button>
 
         <button
@@ -36,9 +35,7 @@ function GlobeControls({
           aria-label={t("controls.zoomOut")}
           title={t("controls.zoomOut")}
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 12h14" />
-          </svg>
+          <Icon name="Minus" size={19} />
         </button>
 
         <button
@@ -48,14 +45,11 @@ function GlobeControls({
           aria-label={t("controls.resetView")}
           title={t("controls.resetView")}
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-            <path d="M3 3v5h5" />
-          </svg>
+          <Icon name="RotateCcw" size={18} />
         </button>
       </div>
 
-      <div className="globe-controls-group">
+      <div className="globe-controls-group" role="group" aria-label={t("controls.globeTools")}>
         <button
           type="button"
           className={"globe-ctrl-btn" + (liteMode ? " is-active" : "")}
@@ -63,7 +57,7 @@ function GlobeControls({
           aria-label={liteMode ? t("controls.liteModeOn") : t("controls.liteModeOff")}
           title={t("controls.liteModeDesc")}
         >
-          <span className="globe-ctrl-icon" aria-hidden="true">⚡</span>
+          <Icon name="Zap" size={18} />
         </button>
 
         <button
@@ -73,9 +67,7 @@ function GlobeControls({
           aria-label={theme === "light" ? t("controls.themeLight") : t("controls.themeDark")}
           title={theme === "light" ? t("controls.themeLight") : t("controls.themeDark")}
         >
-          <span className="globe-ctrl-icon" aria-hidden="true">
-            {theme === "light" ? "☀️" : "🌙"}
-          </span>
+          <Icon name={theme === "light" ? "Sun" : "Moon"} size={18} />
         </button>
 
         <button
@@ -85,7 +77,7 @@ function GlobeControls({
           aria-label={t("controls.shortcuts")}
           title={t("controls.shortcuts")}
         >
-          <span className="globe-ctrl-icon" aria-hidden="true">⌨️</span>
+          <Icon name="Keyboard" size={18} />
         </button>
       </div>
 
@@ -99,7 +91,7 @@ function GlobeControls({
               onClick={() => setShowShortcuts(false)}
               aria-label={t("card.close")}
             >
-              ×
+              <Icon name="X" size={18} />
             </button>
           </div>
           <ul className="shortcuts-list">

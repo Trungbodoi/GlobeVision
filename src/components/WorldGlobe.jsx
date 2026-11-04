@@ -1,28 +1,37 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Globe from "globe.gl";
 import * as THREE from "three";
+import { booleanPointInPolygon, point } from "@turf/turf";
 
 import { createStars } from "../utils/createStars";
 import { createGraticule } from "../utils/createGraticule";
 import { createAtmosphere } from "../utils/createAtmosphere";
 import { createCountryBorders } from "../utils/createCountryBorders";
+import { createDayNightOverlay } from "../utils/createDayNightOverlay";
 import {
   readCompareParam,
   readCountryParam,
+  readRouteSearchParams,
+  updateUrlParams,
   writeCompareParam,
   writeCountryParam,
 } from "../utils/urlState";
+import { recordRecentCountry } from "../utils/recentCountries";
 import { getCountryInfo } from "../services/countryApi";
+import { loadStaticGeoJson } from "../services/staticDataApi";
 import { loadCountries } from "../data/countries";
 import { COMPARE_COLORS, MAX_COMPARE } from "../data/compare";
+import WorldExplorer from "./WorldExplorer";
 import { useI18n } from "../i18n/useI18n";
 
 import CountryCard from "./CountryCard";
 import CountrySearch from "./CountrySearch";
+import Icon from "./Icon";
 import CompareTray from "./CompareTray";
 import ComparePanel from "./ComparePanel";
 import GlobeControls from "./GlobeControls";
 import DataSourcesModal from "./DataSourcesModal";
+import EducationCenter from "./EducationCenter";
 import "./WorldGlobe.css";
 
 // Chiều rộng thẻ thông tin + lề (xem CountryCard.css).
@@ -31,11 +40,18 @@ const MOBILE_BREAKPOINT = 600;
 
 const COLORS = {
   defaultDark: "#eeeeee",
-  defaultLight: "#f8fafc",
   hover: "#4dabf7",
   selected: "#1c7ed6",
   neighbor: "#a5d8ff",
 };
+
+const SCENE_COLORS = { background: 0x000000, globe: 0x061238, sides: "#cccccc" };
+
+function getPolygonSideColor(feature) {
+  if (feature.properties.layer === "lake") return "#7dd3fc";
+  if (feature.properties.layer === "mountainRange") return "#c4a484";
+  return SCENE_COLORS.sides;
+}
 
 function escapeHtml(text) {
   return String(text).replace(
@@ -46,33 +62,54 @@ function escapeHtml(text) {
 
 // Nước nhỏ cần zoom gần hơn để nhìn thấy.
 function altitudeFor(country) {
-  if (country.span < 5) return 1.2;
-  if (country.span < 20) return 1.8;
-
-  return 2.5;
+  if (!Number.isFinite(country.span)) return 2.5;
+  return Math.min(2.5, Math.max(0.65, 0.6 + country.span * 0.018));
 }
 
-function WorldGlobe({ onProgress, onLoaded }) {
-  const { lang } = useI18n();
+function getPathFeatures(features) {
+  return features.flatMap((feature) => {
+    if (feature.geometry.type === "LineString") return [feature];
+    if (feature.geometry.type !== "MultiLineString") return [];
+    return feature.geometry.coordinates.map((coordinates) => ({
+      ...feature,
+      geometry: { type: "LineString", coordinates },
+    }));
+  });
+}
+
+function WorldGlobe({ onProgress, onLoaded, theme, onToggleTheme, onHome }) {
+  const { lang, t } = useI18n();
+  const [educationConfig] = useState(() => {
+    const params = readRouteSearchParams();
+    const quiz = params.get("quiz");
+    const path = params.get("path");
+    const intent = params.get("intent");
+    const view = ["flashcards", "paths", "progress"].includes(intent) ? intent : "quiz";
+    return {
+      open: Boolean(quiz || path || intent),
+      region: quiz?.toLowerCase() === "asean" ? "ASEAN" : quiz || "all",
+      difficulty: params.get("difficulty") || "easy",
+      type: params.get("quizType") || "mixed",
+      path: path || "",
+      intent,
+      view,
+    };
+  });
+  const [educationOpen, setEducationOpen] = useState(educationConfig.open);
+  const [explorerOpen, setExplorerOpen] = useState(() => {
+    const params = readRouteSearchParams();
+    return ["metric", "layer", "layers", "group"].some((key) => params.has(key));
+  });
+  const [explorerState, setExplorerState] = useState(null);
 
   const [countryData, setCountryData] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
+  const [showNeighborHighlight, setShowNeighborHighlight] = useState(true);
   const [details, setDetails] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const [compareIds, setCompareIds] = useState([]);
   const [compareOpen, setCompareOpen] = useState(false);
   const [isSourcesModalOpen, setIsSourcesModalOpen] = useState(false);
-
-  // Theme & Lite Mode state
-  const [theme, setTheme] = useState(() => {
-    try {
-      const stored = localStorage.getItem("globevision.theme");
-      if (stored === "light" || stored === "dark") return stored;
-      return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-    } catch {
-      return "dark";
-    }
-  });
 
   const [liteMode, setLiteMode] = useState(() => {
     try {
@@ -84,6 +121,7 @@ function WorldGlobe({ onProgress, onLoaded }) {
 
   const globeRef = useRef();
   const globeInstanceRef = useRef(null);
+  const educationAnswerRef = useRef(null);
   const highlightRef = useRef({
     hoverId: null,
     selectedId: null,
@@ -98,11 +136,32 @@ function WorldGlobe({ onProgress, onLoaded }) {
   const selectCountry = useCallback((id) => {
     writeCountryParam(id);
     setSelectedId(id);
+    setShowNeighborHighlight(true);
   }, []);
 
   const closeCountry = useCallback(() => {
     writeCountryParam(null);
     setSelectedId(null);
+    setShowNeighborHighlight(true);
+  }, []);
+
+  const setEducationAnswerHandler = useCallback((handler) => {
+    educationAnswerRef.current = handler;
+  }, []);
+
+  const closeEducation = useCallback(() => {
+    setEducationOpen(false);
+    updateUrlParams({
+      quiz: null,
+      difficulty: null,
+      quizType: null,
+      path: null,
+      intent: null,
+    });
+  }, []);
+
+  const handleExplorerChange = useCallback((nextState) => {
+    setExplorerState(nextState);
   }, []);
 
   // ----------------------------------------------------------------
@@ -139,6 +198,8 @@ function WorldGlobe({ onProgress, onLoaded }) {
     let borders;
     let starMaterial;
     let atmosMat;
+    let dayNightOverlay;
+    let dayNightTimer;
     let sceneBackground;
     let globeMat;
     let disposed = false;
@@ -150,16 +211,25 @@ function WorldGlobe({ onProgress, onLoaded }) {
         selectedId: current,
         neighborIds,
         compareColors,
-        theme: currentTheme,
       } = highlightRef.current;
-      const defaultColor =
-        currentTheme === "light" ? COLORS.defaultLight : COLORS.defaultDark;
+      const explorer = highlightRef.current.explorer;
+      const defaultColor = COLORS.defaultDark;
 
       globe?.polygonCapColor(({ properties }) => {
+        if (properties.layer === "lake") return "#38bdf8";
+        if (properties.layer === "mountainRange") return "#a78b6a";
+        if (!properties.id) return defaultColor;
         if (properties.id === hoverId) return COLORS.hover;
         if (compareColors.has(properties.id)) return compareColors.get(properties.id);
         if (properties.id === current) return COLORS.selected;
         if (neighborIds.has(properties.id)) return COLORS.neighbor;
+        if (explorer?.group !== "none" && !explorer?.groupCountryIds?.has(properties.id)) {
+          return "#334155";
+        }
+        if (explorer?.group !== "none") return "#f59e0b";
+        if (explorer?.metricColors?.has(properties.iso3)) {
+          return explorer.metricColors.get(properties.iso3);
+        }
 
         return defaultColor;
       });
@@ -191,9 +261,7 @@ function WorldGlobe({ onProgress, onLoaded }) {
 
         const [data, boundaryData] = await Promise.all([
           loadCountries(),
-          fetch(`${import.meta.env.BASE_URL}data/boundaries.geojson`).then((response) =>
-            response.json()
-          ),
+          loadStaticGeoJson("boundaries.geojson").then(({ data: geojson }) => geojson),
         ]);
 
         if (disposed) return;
@@ -203,8 +271,7 @@ function WorldGlobe({ onProgress, onLoaded }) {
         const scene = globe.scene();
 
         // Nền
-        const isLight = document.documentElement.getAttribute("data-theme") === "light";
-        sceneBackground = new THREE.Color(isLight ? 0xdbeafe : 0x000000);
+        sceneBackground = new THREE.Color(SCENE_COLORS.background);
         scene.background = sceneBackground;
 
         // Ánh sáng
@@ -228,7 +295,7 @@ function WorldGlobe({ onProgress, onLoaded }) {
 
         // Globe.gl
         globeMat = new THREE.MeshStandardMaterial({
-          color: isLight ? 0xa4caf6 : 0x061238,
+          color: SCENE_COLORS.globe,
           roughness: 0.7,
           metalness: 0.05,
         });
@@ -236,11 +303,25 @@ function WorldGlobe({ onProgress, onLoaded }) {
         globe
           .showAtmosphere(false)
           .globeMaterial(globeMat)
-          .polygonSideColor(() => (isLight ? "#cbd5e1" : "#cccccc"))
+          .polygonSideColor(getPolygonSideColor)
           .polygonStrokeColor(() => "rgba(0,0,0,0)")
-          .polygonAltitude(0.01)
-          .polygonLabel(({ properties }) => {
+          .polygonAltitude(({ properties }) => {
+            if (properties.layer === "lake") return 0.014;
+            if (properties.layer === "mountainRange") return 0.012;
+            return 0.01;
+          })
+          .polygonLabel((feature) => {
+            const { properties } = feature;
             const name = langRef.current === "en" ? properties.nameEn : properties.nameVi;
+            const label = properties.layer
+              ? `${properties.name} · ${
+                  properties.layer === "lake"
+                    ? t("globe.layer.lake")
+                    : properties.layer === "mountainRange"
+                      ? t("globe.layer.mountainRange")
+                      : t("globe.layer.default")
+                }`
+              : name;
 
             return `
               <div style="
@@ -252,18 +333,71 @@ function WorldGlobe({ onProgress, onLoaded }) {
                 font-weight: 600;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.3);
               ">
-                <b>${escapeHtml(name)}</b>
+                <b>${escapeHtml(label)}</b>
               </div>
             `;
           })
-          .onPolygonClick((feature) => {
-            selectCountry(feature.properties.id);
+          .onPolygonClick((feature, _event, coordinates) => {
+            const clickedPoint =
+              Number.isFinite(coordinates?.lat) && Number.isFinite(coordinates?.lng)
+                ? point([coordinates.lng, coordinates.lat])
+                : null;
+            const countryId = feature.properties.id || (clickedPoint
+              ? data.features.find((countryFeature) =>
+                  booleanPointInPolygon(clickedPoint, countryFeature)
+                )?.properties.id
+              : null);
+            if (!countryId) return;
+            if (educationAnswerRef.current) {
+              educationAnswerRef.current(countryId);
+            } else {
+              selectCountry(countryId);
+            }
           })
           .onPolygonHover((feature) => {
             highlightRef.current.hoverId = feature?.properties.id ?? null;
             applyColors();
           })
-          .polygonsData(data.features);
+          .polygonsData(data.features)
+          .pathsData([])
+          .pathPoints(({ geometry }) => geometry.coordinates)
+          .pathPointLat((point) => point[1])
+          .pathPointLng((point) => point[0])
+          .pathPointAlt(() => 0.016)
+          .pathColor(({ properties }) =>
+            properties.layer === "dateLine" ? "#fb7185" : "#38bdf8"
+          )
+          .pathStroke(({ properties }) => (properties.layer === "dateLine" ? 0.8 : 0.5))
+          .pathResolution(2)
+          .pathTransitionDuration(0)
+          .pointsData([])
+          .pointLat((feature) => feature.geometry.coordinates[1])
+          .pointLng((feature) => feature.geometry.coordinates[0])
+          .pointAltitude(0.012)
+          .pointRadius(0.1)
+          .pointColor(() => "#ff0000")
+          .pointLabel((feature) => `
+            <div style="background:white;padding:6px 9px;border-radius:6px;color:#0f172a;font-size:13px;font-weight:600">
+              <b>${escapeHtml(feature.properties.name)}</b>
+            </div>
+          `)
+          .onPointClick((feature) => {
+            if (feature.properties.countryId) selectCountry(feature.properties.countryId);
+          })
+          .arcsData([])
+          .arcStartLat((arc) => arc.start.lat)
+          .arcStartLng((arc) => arc.start.lng)
+          .arcEndLat((arc) => arc.end.lat)
+          .arcEndLng((arc) => arc.end.lng)
+          .arcColor(() => "#f97316")
+          .arcStroke(() => 0.55)
+          .arcAltitudeAutoScale(0.35)
+          .arcDashLength(0.45)
+          .arcDashGap(0.18)
+          .arcDashAnimateTime(1800);
+
+        dayNightOverlay = createDayNightOverlay(globe, scene);
+        dayNightTimer = window.setInterval(() => dayNightOverlay?.update(), 60_000);
 
         globeInstanceRef.current = {
           globe,
@@ -274,6 +408,67 @@ function WorldGlobe({ onProgress, onLoaded }) {
           globeMat,
           applyColors,
           fitGlobe,
+          updateExplorer(explorer) {
+            highlightRef.current.explorer = explorer;
+            const features = explorer?.features ?? [];
+            const polygons = features.filter((feature) =>
+              ["lake", "mountainRange"].includes(feature.properties.layer)
+            );
+            const polygonKey = polygons
+              .map((feature) => `${feature.properties.layer}:${feature.properties.name}`)
+              .join("|");
+            if (polygonKey !== this.polygonKey) {
+              globe.polygonsData([...data.features, ...polygons]);
+              this.polygonKey = polygonKey;
+            }
+
+            const paths = getPathFeatures(features.filter((feature) =>
+              ["river", "dateLine"].includes(feature.properties.layer)
+            ));
+            const pathKey = paths
+              .map((feature) => `${feature.properties.layer}:${feature.properties.name}:${feature.geometry.coordinates.length}`)
+              .join("|");
+            if (pathKey !== this.pathKey) {
+              globe.pathsData(paths);
+              this.pathKey = pathKey;
+            }
+
+            const capitalsEnabled = Boolean(explorer?.layers?.capitals);
+            const capitalFeatures = capitalsEnabled
+              ? features
+                  .filter((feature) => feature.properties.layer === "capital")
+                  .map((feature) => ({
+                    ...feature,
+                    properties: {
+                      ...feature.properties,
+                      countryId:
+                        data.byId.get(feature.properties.iso2)?.id ??
+                        data.byIso3.get(feature.properties.iso3)?.id ??
+                        null,
+                    },
+                  }))
+              : [];
+            const pointKey = capitalsEnabled
+              ? capitalFeatures
+                  .map((feature) => feature.geometry.coordinates.join(","))
+                  .join("|")
+              : "";
+            if (pointKey !== this.pointKey) {
+              globe.pointsData(capitalFeatures);
+              this.pointKey = pointKey;
+            }
+
+            dayNightOverlay.mesh.visible = Boolean(explorer?.layers?.dayNight);
+            const route = explorer?.route;
+            const arcKey = route
+              ? `${route.startId}:${route.endId}:${route.start.lat}:${route.start.lng}:${route.end.lat}:${route.end.lng}`
+              : "";
+            if (arcKey !== this.arcKey) {
+              globe.arcsData(route ? [route] : []);
+              this.arcKey = arcKey;
+            }
+            this.applyColors();
+          },
         };
 
         applyColors();
@@ -359,13 +554,14 @@ function WorldGlobe({ onProgress, onLoaded }) {
       disposed = true;
       globeInstanceRef.current = null;
       window.removeEventListener("resize", fitGlobe);
+      window.clearInterval(dayNightTimer);
 
       if (globe) {
         globe._destructor();
       }
 
       // Giải phóng các layer đã tạo ngoài Globe.gl
-      [stars, graticuleGroup, atmosphere, borders].forEach((object) => {
+      [stars, graticuleGroup, atmosphere, borders, dayNightOverlay?.mesh].forEach((object) => {
         object?.traverse?.((child) => {
           child.geometry?.dispose?.();
 
@@ -381,28 +577,8 @@ function WorldGlobe({ onProgress, onLoaded }) {
   }, []);
 
   // ----------------------------------------------------------------
-  // Cập nhật Theme & Lite Mode trên Three.js instance
+  // Cập nhật Lite Mode trên Three.js instance
   // ----------------------------------------------------------------
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    try {
-      localStorage.setItem("globevision.theme", theme);
-    } catch {
-      // bỏ qua
-    }
-
-    const inst = globeInstanceRef.current;
-    if (!inst) return;
-
-    highlightRef.current.theme = theme;
-    inst.applyColors();
-
-    const isLight = theme === "light";
-    inst.scene.background = new THREE.Color(isLight ? 0xdbeafe : 0x000000);
-    inst.globeMat.color.set(isLight ? 0xa4caf6 : 0x061238);
-    inst.globe.polygonSideColor(() => (isLight ? "#cbd5e1" : "#cccccc"));
-  }, [theme]);
-
   useEffect(() => {
     try {
       localStorage.setItem("globevision.liteMode", String(liteMode));
@@ -494,7 +670,9 @@ function WorldGlobe({ onProgress, onLoaded }) {
           break;
         }
         case "Escape": {
-          if (compareOpen) {
+          if (educationOpen) {
+            closeEducation();
+          } else if (compareOpen) {
             setCompareOpen(false);
           } else if (selectedId) {
             closeCountry();
@@ -508,7 +686,7 @@ function WorldGlobe({ onProgress, onLoaded }) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [compareOpen, selectedId, closeCountry]);
+  }, [compareOpen, selectedId, educationOpen, closeEducation, closeCountry]);
 
   // ----------------------------------------------------------------
   // Điều khiển camera từ giao diện (GlobeControls actions)
@@ -541,15 +719,27 @@ function WorldGlobe({ onProgress, onLoaded }) {
 
     const handlePopState = () => {
       const id = readCountryParam();
-
       setSelectedId(id && countryData.byId.has(id) ? id : null);
-      writeCompareParam(compareIds);
+      setShowNeighborHighlight(true);
+      const sharedCompare = readCompareParam();
+      const nextCompare = [...new Set(sharedCompare)]
+        .filter((countryId) => countryData.byId.has(countryId))
+        .slice(0, MAX_COMPARE);
+      setCompareIds(nextCompare);
+      setCompareOpen(nextCompare.length >= 2);
+      if (nextCompare.join(",") !== sharedCompare.join(",")) {
+        writeCompareParam(nextCompare);
+      }
     };
 
     window.addEventListener("popstate", handlePopState);
 
     return () => window.removeEventListener("popstate", handlePopState);
   }, [countryData, compareIds]);
+
+  useEffect(() => {
+    if (selectedId) recordRecentCountry(selectedId);
+  }, [selectedId]);
 
   const selectedCountry = selectedId ? countryData?.byId.get(selectedId) ?? null : null;
 
@@ -620,12 +810,18 @@ function WorldGlobe({ onProgress, onLoaded }) {
   // Tô màu quốc gia đang chọn, các nước láng giềng và các nước đang so sánh
   useEffect(() => {
     highlightRef.current.selectedId = selectedId;
-    highlightRef.current.neighborIds = new Set(neighbors.map((country) => country.id));
+    highlightRef.current.neighborIds = showNeighborHighlight
+      ? new Set(neighbors.map((country) => country.id))
+      : new Set();
     highlightRef.current.compareColors = new Map(
       compareIds.map((id, index) => [id, COMPARE_COLORS[index]])
     );
     globeInstanceRef.current?.applyColors();
-  }, [selectedId, neighbors, compareIds]);
+  }, [selectedId, neighbors, compareIds, showNeighborHighlight]);
+
+  useEffect(() => {
+    if (explorerState) globeInstanceRef.current?.updateExplorer(explorerState);
+  }, [explorerState, countryData]);
 
   // Co giãn vùng vẽ khi mở/đóng thẻ thông tin
   useEffect(() => {
@@ -642,7 +838,31 @@ function WorldGlobe({ onProgress, onLoaded }) {
       {/* Globe */}
       <div ref={globeRef} className="world-globe-canvas" />
 
-      {countryData && <CountrySearch countries={countryData.list} onSelect={selectCountry} />}
+      {countryData && (
+        <CountrySearch
+          countries={countryData.list}
+          onSelect={selectCountry}
+          onHome={onHome}
+        />
+      )}
+      <div className="globe-actionbar" role="group" aria-label={t("controls.globeTools")}>
+        <button
+          type="button"
+          className="education-launcher"
+          onClick={() => setEducationOpen(true)}
+        >
+          <Icon name="GraduationCap" size={17} />
+          <span>{t("education.launch")}</span>
+        </button>
+        {countryData && (
+          <WorldExplorer
+            countries={countryData.list}
+            isOpen={explorerOpen}
+            onToggleOpen={() => setExplorerOpen((open) => !open)}
+            onChange={handleExplorerChange}
+          />
+        )}
+      </div>
 
       {/* Country Card */}
       <CountryCard
@@ -651,6 +871,7 @@ function WorldGlobe({ onProgress, onLoaded }) {
         details={currentDetails}
         loading={loadingDetails}
         neighbors={neighbors}
+        onNeighborVisibilityChange={setShowNeighborHighlight}
         onSelectNeighbor={selectCountry}
         onRetry={() => setRetryCount((count) => count + 1)}
         onClose={closeCountry}
@@ -682,7 +903,7 @@ function WorldGlobe({ onProgress, onLoaded }) {
         liteMode={liteMode}
         onToggleLiteMode={() => setLiteMode((v) => !v)}
         theme={theme}
-        onToggleTheme={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
+        onToggleTheme={onToggleTheme}
       />
 
       <SourceNote onOpenSources={() => setIsSourcesModalOpen(true)} />
@@ -692,6 +913,16 @@ function WorldGlobe({ onProgress, onLoaded }) {
         isOpen={isSourcesModalOpen}
         onClose={() => setIsSourcesModalOpen(false)}
       />
+
+      {educationOpen && countryData && (
+        <EducationCenter
+          countries={countryData.list}
+          initialConfig={educationConfig}
+          onClose={closeEducation}
+          onSelectCountry={selectCountry}
+          onGlobeAnswer={setEducationAnswerHandler}
+        />
+      )}
     </div>
   );
 }

@@ -1,10 +1,30 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GlobeVision</title>
+    <meta name="description" content="Khám phá địa lý thế giới trên địa cầu 3D, tìm hiểu quốc gia, học qua quiz và xem dữ liệu bản đồ chuyên sâu." />
+    <meta name="theme-color" content="#070b14" />
+    <meta name="application-name" content="GlobeVision" />
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="%BASE_URL%icons/app-icon-192.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="GlobeVision" />
+    <meta property="og:locale" content="vi_VN" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:title" content="GlobeVision — Khám phá địa lý thế giới" />
+    <meta property="og:description" content="Khám phá địa lý thế giới trên địa cầu 3D, học qua quiz và xem dữ liệu bản đồ chuyên sâu." />
+    <meta property="og:url" content="https://trungbodoi.github.io/GlobeVision/" />
+    <meta property="og:image" content="https://trungbodoi.github.io/GlobeVision/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="GlobeVision — địa cầu 3D tương tác để khám phá thế giới" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="GlobeVision — Khám phá địa lý thế giới" />
+    <meta name="twitter:description" content="Khám phá địa lý thế giới trên địa cầu 3D, học qua quiz và xem dữ liệu bản đồ chuyên sâu." />
+    <meta name="twitter:image" content="https://trungbodoi.github.io/GlobeVision/og-image.png" />
+    <title>GlobeVision — Khám phá địa lý thế giới</title>
     <style>
   #initial-loader {
     position: fixed;
@@ -24,10 +44,13 @@
   }
 
   .initial-loader-globe {
-    font-size: 64px;
-    margin-bottom: 16px;
-
-    animation: initial-loader-spin 2s linear infinite;
+    width: 46px;
+    height: 46px;
+    margin: 0 auto 20px;
+    border: 3px solid rgba(255,255,255,.2);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: initial-loader-spin 1.2s linear infinite;
   }
 
   .initial-loader-content h1 {
@@ -100,10 +123,8 @@
   <!-- Loading xuất hiện ngay lập tức, trước khi React tải -->
   <div id="initial-loader">
     <div class="initial-loader-content">
-      <div class="initial-loader-globe">🌍</div>
+      <div class="initial-loader-globe" aria-hidden="true"></div>
   <h1>GlobeVision</h1>
-
-  <p>Đang khởi động...</p>
 
   <div class="initial-loader-bar">
     <div class="initial-loader-bar-fill"></div>

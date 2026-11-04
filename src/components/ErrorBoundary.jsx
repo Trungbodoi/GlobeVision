@@ -1,4 +1,5 @@
 import React from "react";
+import Icon from "./Icon";
 import "./ErrorBoundary.css";
 
 class ErrorBoundary extends React.Component {
@@ -31,7 +32,7 @@ class ErrorBoundary extends React.Component {
       return (
         <div className="error-boundary-screen" role="alert">
           <div className="error-boundary-content">
-            <div className="error-boundary-icon" aria-hidden="true">🌐⚠️</div>
+            <div className="error-boundary-icon"><Icon name="Globe2" size={42} /></div>
             <h1 className="error-boundary-title">
               {isVi ? "Đã xảy ra sự cố hiển thị" : "Something went wrong"}
             </h1>

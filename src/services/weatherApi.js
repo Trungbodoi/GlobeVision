@@ -8,41 +8,32 @@ const WEATHER_TTL_MS = 30 * 60 * 1000; // 30 phút
 
 // Bảng mô tả mã thời tiết WMO (World Meteorological Organization)
 const WMO_WEATHER_CODES = {
-  0: { vi: "Trời quang đãng", en: "Clear sky", icon: "☀️" },
-  1: { vi: "Ít mây", en: "Mainly clear", icon: "🌤️" },
-  2: { vi: "Mây rải rác", en: "Partly cloudy", icon: "⛅" },
-  3: { vi: "Nhiều mây", en: "Overcast", icon: "☁️" },
-  45: { vi: "Có sương mù", en: "Foggy", icon: "🌫️" },
-  48: { vi: "Sương mù đóng băng", en: "Depositing rime fog", icon: "🌫️" },
-  51: { vi: "Mưa phùn nhẹ", en: "Light drizzle", icon: "🌦️" },
-  53: { vi: "Mưa phùn vừa", en: "Moderate drizzle", icon: "🌦️" },
-  55: { vi: "Mưa phùn dày", en: "Dense drizzle", icon: "🌧️" },
-  61: { vi: "Mưa nhẹ", en: "Slight rain", icon: "🌧️" },
-  63: { vi: "Mưa vừa", en: "Moderate rain", icon: "🌧️" },
-  65: { vi: "Mưa to", en: "Heavy rain", icon: "🌧️" },
-  71: { vi: "Tuyết rơi nhẹ", en: "Slight snow fall", icon: "🌨️" },
-  73: { vi: "Tuyết rơi vừa", en: "Moderate snow fall", icon: "🌨️" },
-  75: { vi: "Tuyết rơi dày", en: "Heavy snow fall", icon: "❄️" },
-  80: { vi: "Mưa rào nhẹ", en: "Slight rain showers", icon: "🌦️" },
-  81: { vi: "Mưa rào vừa", en: "Moderate rain showers", icon: "🌧️" },
-  82: { vi: "Mưa rào rất to", en: "Violent rain showers", icon: "⛈️" },
-  95: { vi: "Dông sét", en: "Thunderstorm", icon: "⚡" },
-  96: { vi: "Dông kèm mưa đá nhẹ", en: "Thunderstorm with slight hail", icon: "⛈️" },
-  99: { vi: "Dông kèm mưa đá nặng hạt", en: "Thunderstorm with heavy hail", icon: "⛈️" },
+  0: { labelKey: "weather.code.clear", icon: "Sun" },
+  1: { labelKey: "weather.code.mainlyClear", icon: "CloudSun" },
+  2: { labelKey: "weather.code.partlyCloudy", icon: "CloudSun" },
+  3: { labelKey: "weather.code.overcast", icon: "Cloud" },
+  45: { labelKey: "weather.code.fog", icon: "CloudFog" },
+  48: { labelKey: "weather.code.rimeFog", icon: "CloudFog" },
+  51: { labelKey: "weather.code.lightDrizzle", icon: "CloudDrizzle" },
+  53: { labelKey: "weather.code.moderateDrizzle", icon: "CloudDrizzle" },
+  55: { labelKey: "weather.code.denseDrizzle", icon: "CloudRain" },
+  61: { labelKey: "weather.code.lightRain", icon: "CloudRain" },
+  63: { labelKey: "weather.code.moderateRain", icon: "CloudRain" },
+  65: { labelKey: "weather.code.heavyRain", icon: "CloudRain" },
+  71: { labelKey: "weather.code.lightSnow", icon: "CloudSnow" },
+  73: { labelKey: "weather.code.moderateSnow", icon: "CloudSnow" },
+  75: { labelKey: "weather.code.heavySnow", icon: "CloudSnow" },
+  80: { labelKey: "weather.code.lightShowers", icon: "CloudDrizzle" },
+  81: { labelKey: "weather.code.moderateShowers", icon: "CloudRain" },
+  82: { labelKey: "weather.code.heavyShowers", icon: "CloudRain" },
+  95: { labelKey: "weather.code.thunderstorm", icon: "CloudLightning" },
+  96: { labelKey: "weather.code.lightHail", icon: "CloudHail" },
+  99: { labelKey: "weather.code.heavyHail", icon: "CloudHail" },
 };
 
-export function getWeatherDescription(code, lang = "vi") {
+export function getWeatherDescription(code) {
   const item = WMO_WEATHER_CODES[code];
-  if (!item) {
-    return {
-      text: lang === "vi" ? "Thời tiết bình thường" : "Normal weather",
-      icon: "🌤️",
-    };
-  }
-  return {
-    text: lang === "vi" ? item.vi : item.en,
-    icon: item.icon,
-  };
+  return item || { labelKey: "weather.code.unknown", icon: "CloudSun" };
 }
 
 /**

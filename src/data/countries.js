@@ -2,7 +2,7 @@
 // Mọi thành phần khác lấy thông tin quốc gia qua module này thay vì
 // đọc trực tiếp thuộc tính GeoJSON.
 
-const DATA_URL = `${import.meta.env.BASE_URL}data/countries.geojson`;
+import { loadStaticGeoJson } from "../services/staticDataApi";
 
 // Tên gọi thông dụng không có trong dữ liệu Natural Earth.
 const ALIASES = {
@@ -50,15 +50,8 @@ let cache = null;
  */
 export function loadCountries() {
   if (!cache) {
-    cache = fetch(DATA_URL)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Không tải được dữ liệu quốc gia (${response.status})`);
-        }
-
-        return response.json();
-      })
-      .then((geojson) => {
+    cache = loadStaticGeoJson("countries.geojson")
+      .then(({ data: geojson }) => {
         const list = geojson.features.map(buildCountry);
 
         return {

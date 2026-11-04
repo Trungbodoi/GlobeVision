@@ -5,6 +5,7 @@
   --bg-canvas: #000000;
   --bg-surface: rgba(10, 17, 30, 0.88);
   --bg-surface-elevated: rgba(15, 25, 45, 0.96);
+  --bg-card: #0a111e;
   --border-color: rgba(255, 255, 255, 0.14);
   --border-subtle: rgba(255, 255, 255, 0.08);
   
@@ -26,6 +27,7 @@
   --bg-canvas: #dbeafe;
   --bg-surface: rgba(255, 255, 255, 0.94);
   --bg-surface-elevated: rgba(248, 250, 252, 0.98);
+  --bg-card: #f8fafc;
   --border-color: rgba(15, 23, 42, 0.14);
   --border-subtle: rgba(15, 23, 42, 0.08);
   

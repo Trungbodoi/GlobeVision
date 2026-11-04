@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="ocean" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+    <clipPath id="globe"><circle cx="256" cy="256" r="190"/></clipPath>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#070b14"/>
+  <circle cx="256" cy="256" r="202" fill="#0f172a" stroke="#7dd3fc" stroke-width="8"/>
+  <g clip-path="url(#globe)">
+    <circle cx="256" cy="256" r="190" fill="url(#ocean)"/>
+    <path d="m125 165 44-37 34 8 18 31-20 23 10 23-25 16-6 39-30 20-8 43-24 13-27-43 8-53-20-24 22-38-8-24zm161-41 44-18 25 17 42-7 32 29-20 29-35 5-18 29-32-3-15-31-30-10-13-24zm30 117 37 12 21 32-16 30 9 42-22 43-29-6-12-47-24-20 3-37-22-20 18-21zm-144 104 43 2 24 20-15 33-38 15-26-26z" fill="#bbf7d0"/>
+    <ellipse cx="256" cy="256" rx="86" ry="190" fill="none" stroke="#e0f2fe" stroke-opacity=".72" stroke-width="7"/>
+    <path d="M66 256h380M91 166h330M91 346h330" fill="none" stroke="#e0f2fe" stroke-opacity=".62" stroke-width="7"/>
+  </g>
+  <circle cx="256" cy="256" r="190" fill="none" stroke="#e0f2fe" stroke-width="8"/>
+</svg>

@@ -1,10 +1,11 @@
 import { useI18n } from "../i18n/useI18n";
+import Icon from "./Icon";
 import "./LoadingScreen.css";
 
 function LoadingScreen({ progress }) {
 const { t } = useI18n();
 
-return ( <div className="loading-screen"> <div className="loading-content"> <div className="loading-globe">🌍</div>
+return ( <div className="loading-screen"> <div className="loading-content"> <div className="loading-globe"><Icon name="Globe2" size={56} /></div>
 
     <h1>GlobeVision</h1>
 

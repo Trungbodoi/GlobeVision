@@ -157,7 +157,7 @@
   /* Thẻ thông tin chiếm nửa dưới: đặt thanh so sánh ngay dưới ô tìm kiếm */
   .compare-tray,
   .world-globe:has(.country-card) .compare-tray {
-    top: 68px;
+    top: 118px;
     left: 12px;
     bottom: auto;
 

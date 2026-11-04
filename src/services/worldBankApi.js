@@ -1,8 +1,8 @@
 // Gọi World Bank Open Data API (không cần API key).
-// Lấy các chỉ số phát triển: GDP/người, tuổi thọ, tỷ lệ đô thị hóa, CO2/người, tỷ lệ biết chữ.
+// Lấy các chỉ số phát triển: GDP/người, tuổi thọ, tỷ lệ đô thị hóa, CO2e/người, tỷ lệ biết chữ.
 // Giấy phép dữ liệu: Creative Commons Attribution 4.0 (CC BY 4.0).
 
-import { apiRequest } from "./apiClient";
+import { apiRequest } from "./apiClient.js";
 
 const WB_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 14 ngày
 
@@ -23,9 +23,9 @@ export const INDICATORS = {
     unitEn: "% of population",
   },
   co2PerCapita: {
-    id: "EN.ATM.CO2E.PC",
-    unitVi: "tấn/người",
-    unitEn: "metric tons/capita",
+    id: "EN.GHG.CO2.PC.CE.AR5",
+    unitVi: "t CO₂e/người",
+    unitEn: "t CO₂e/capita",
   },
   literacyRate: {
     id: "SE.ADT.LITR.ZS",

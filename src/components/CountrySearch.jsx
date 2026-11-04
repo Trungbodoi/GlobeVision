@@ -1,9 +1,17 @@
 import { useId, useMemo, useRef, useState } from "react";
 import { getCountryName, searchCountries } from "../data/countries";
 import { useI18n } from "../i18n/useI18n";
+import Icon from "./Icon";
 import "./CountrySearch.css";
 
-function CountrySearch({ countries, onSelect }) {
+function CountrySearch({
+  countries,
+  onSelect,
+  variant = "globe",
+  showLanguageToggle = true,
+  onHome,
+  inputId,
+}) {
   const { lang, setLang, t, place } = useI18n();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -45,15 +53,13 @@ function CountrySearch({ countries, onSelect }) {
   }
 
   return (
-    <div className="globe-toolbar">
+    <div className={`globe-toolbar${variant === "landing" ? " is-landing" : ""}`}>
       <div className="country-search">
-        <svg className="country-search-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="11" cy="11" r="7" />
-          <path d="m20 20-4-4" />
-        </svg>
+        <Icon className="country-search-icon" name="Search" size={19} />
 
         <input
           ref={inputRef}
+          id={inputId}
           type="search"
           className="country-search-input"
           placeholder={t("search.placeholder")}
@@ -112,16 +118,31 @@ function CountrySearch({ countries, onSelect }) {
         )}
       </div>
 
-      <button
-        type="button"
-        className="language-toggle"
-        onClick={() => setLang(lang === "vi" ? "en" : "vi")}
-        aria-label={t("app.languageSwitch")}
-        title={t("app.languageSwitch")}
-      >
-        <span className={lang === "vi" ? "is-current" : ""}>VI</span>
-        <span className={lang === "en" ? "is-current" : ""}>EN</span>
-      </button>
+      {onHome && (
+        <button
+          type="button"
+          className="country-home-button"
+          onClick={onHome}
+          aria-label={t("home.nav.home")}
+          title={t("home.nav.home")}
+        >
+          <Icon name="Home" size={19} />
+          <span>{t("home.nav.home")}</span>
+        </button>
+      )}
+
+      {showLanguageToggle && (
+        <button
+          type="button"
+          className="language-toggle"
+          onClick={() => setLang(lang === "vi" ? "en" : "vi")}
+          aria-label={t("app.languageSwitch")}
+          title={t("app.languageSwitch")}
+        >
+          <span className={lang === "vi" ? "is-current" : ""}>VI</span>
+          <span className={lang === "en" ? "is-current" : ""}>EN</span>
+        </button>
+      )}
     </div>
   );
 }

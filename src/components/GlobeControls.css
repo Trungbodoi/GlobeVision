@@ -1,36 +1,36 @@
 .globe-controls {
   position: fixed;
-  right: 24px;
-  bottom: 24px;
+  right: 20px;
+  bottom: 20px;
   z-index: 99996;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
   pointer-events: auto;
 }
 
 .globe-controls-group {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: var(--bg-surface, rgba(10, 17, 30, 0.88));
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  align-items: center;
+  gap: 3px;
+  padding: 4px;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.14));
-  border-radius: 14px;
-  padding: 6px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  border-radius: 15px;
+  background: var(--bg-surface, rgba(10, 17, 30, 0.9));
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .globe-ctrl-btn {
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 9px;
+  border-radius: 11px;
   color: var(--text-primary, #ffffff);
   cursor: pointer;
   transition: background 0.2s ease, transform 0.15s ease;
@@ -38,7 +38,7 @@
 }
 
 .globe-ctrl-btn:hover {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--accent-soft, rgba(77, 171, 247, 0.18));
 }
 
 .globe-ctrl-btn:active {
@@ -46,23 +46,14 @@
 }
 
 .globe-ctrl-btn.is-active {
-  background: rgba(77, 171, 247, 0.3);
-  color: #74c0fc;
+  background: var(--accent-soft, rgba(77, 171, 247, 0.3));
+  color: var(--accent-hover, #74c0fc);
 }
 
 .globe-ctrl-btn svg {
   width: 18px;
   height: 18px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.globe-ctrl-icon {
-  font-size: 16px;
-  line-height: 1;
+  stroke-width: 1.9;
 }
 
 .globe-ctrl-btn:focus-visible {
@@ -72,6 +63,9 @@
 
 /* Shortcuts Dialog */
 .shortcuts-dialog {
+  --shortcut-key-bg: rgba(255, 255, 255, 0.12);
+  --shortcut-key-border: rgba(255, 255, 255, 0.2);
+  --shortcut-key-text: #ffffff;
   position: absolute;
   right: calc(100% + 12px);
   bottom: 0;
@@ -103,7 +97,7 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
   padding-bottom: 8px;
 }
 
@@ -114,17 +108,21 @@
 }
 
 .shortcuts-close {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 20px;
-  line-height: 1;
+  color: var(--text-muted, rgba(255, 255, 255, 0.65));
   cursor: pointer;
-  padding: 0 4px;
+  padding: 0;
+  border-radius: 9px;
 }
 
 .shortcuts-close:hover {
-  color: #ffffff;
+  color: var(--text-primary, #ffffff);
+  background: var(--accent-soft, rgba(77, 171, 247, 0.18));
 }
 
 .shortcuts-list {
@@ -150,21 +148,48 @@
   font-size: 11px;
   font-family: inherit;
   font-weight: 700;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--shortcut-key-text);
+  background: var(--shortcut-key-bg);
+  border: 1px solid var(--shortcut-key-border);
   border-radius: 4px;
   margin-right: 3px;
+}
+
+:root[data-theme="light"] .shortcuts-dialog {
+  --shortcut-key-bg: #e8eef5;
+  --shortcut-key-border: #b7c5d3;
+  --shortcut-key-text: #142638;
 }
 
 @media (max-width: 600px) {
   .globe-controls {
     right: 12px;
-    bottom: 60px;
+    bottom: 12px;
+    left: 12px;
+    justify-content: center;
+    gap: 6px;
   }
+
+  .globe-controls-group {
+    gap: 1px;
+    padding: 3px;
+  }
+
+  .globe-ctrl-btn {
+    width: clamp(38px, 11vw, 42px);
+    height: 42px;
+  }
+
   .shortcuts-dialog {
     right: 0;
+    left: auto;
     bottom: calc(100% + 10px);
     width: 260px;
+  }
+}
+
+@media (max-width: 360px) {
+  .globe-controls {
+    justify-content: flex-end;
   }
 }

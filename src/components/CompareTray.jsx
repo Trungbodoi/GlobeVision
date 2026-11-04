@@ -1,6 +1,7 @@
 import { COMPARE_COLORS } from "../data/compare";
 import { getCountryName } from "../data/countries";
 import { useI18n } from "../i18n/useI18n";
+import Icon from "./Icon";
 import "./CompareTray.css";
 
 function CompareTray({ countries, onRemove, onClear, onOpen }) {
@@ -30,7 +31,7 @@ function CompareTray({ countries, onRemove, onClear, onOpen }) {
                 onClick={() => onRemove(country.id)}
                 aria-label={t("compare.removeOne", { name })}
               >
-                ×
+                <Icon name="X" size={15} />
               </button>
             </li>
           );

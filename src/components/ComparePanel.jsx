@@ -3,6 +3,7 @@ import { COMPARE_COLORS } from "../data/compare";
 import { getCountryName } from "../data/countries";
 import { getCountryInfo } from "../services/countryApi";
 import { useI18n } from "../i18n/useI18n";
+import Icon from "./Icon";
 import {
   formatCallingCodes,
   formatCompact,
@@ -232,7 +233,7 @@ function ComparePanel({ countries, byIso3, onClose }) {
               onClick={onClose}
               aria-label={t("compare.close")}
             >
-              ×
+              <Icon name="X" size={18} />
             </button>
           </div>
         </header>

@@ -57,8 +57,8 @@
 }
 
 .sources-modal-close {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   background: rgba(125, 125, 125, 0.15);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.18));
@@ -105,6 +105,10 @@
 }
 
 .source-name {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 5px;
   font-size: 15px;
   font-weight: 700;
   color: var(--accent, #339af0);

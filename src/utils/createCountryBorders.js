@@ -34,17 +34,9 @@ export function createCountryBorders(scene, globe, boundaryData) {
       // Không tự tính XYZ nữa.
       // globe.gl có sẵn getCoords() và đây chính là
       // hệ tọa độ mà globe.gl đang sử dụng.
-      const p1 = globe.getCoords(
-        lat1,
-        lng1,
-        COUNTRY_ALTITUDE + 0.0015
-      );
+      const p1 = globe.getCoords(lat1, lng1, COUNTRY_ALTITUDE + 0.0015);
 
-      const p2 = globe.getCoords(
-        lat2,
-        lng2,
-        COUNTRY_ALTITUDE + 0.0015
-      );
+      const p2 = globe.getCoords(lat2, lng2, COUNTRY_ALTITUDE + 0.0015);
 
       positions.push(
         p1.x,
