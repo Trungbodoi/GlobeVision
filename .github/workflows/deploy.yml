@@ -3,7 +3,7 @@ name: Deploy GlobeVision
 on:
   push:
     branches:
-      - main
+      - other-version
 
   workflow_dispatch:
 
