@@ -8,6 +8,7 @@ const STORAGE_PREFIX = "globevision.cache.";
 const DEFAULT_TIMEOUT_MS = 8000;
 const DEFAULT_RETRIES = 2;
 const INITIAL_BACKOFF_MS = 600;
+const CACHE_GRACE_MS = 90 * 24 * 60 * 60 * 1000; // 90 ngày
 
 const memoryCache = new Map();
 
@@ -33,15 +34,19 @@ export function writeStorageCache(key, entry) {
   }
 }
 
-export function clearExpiredCache() {
+/**
+ * Dọn cache đã hết hạn quá lâu để localStorage không đầy dần.
+ * Vẫn giữ dữ liệu vừa hết hạn trong graceMs vì apiRequest dùng nó khi mất mạng.
+ */
+export function clearExpiredCache(graceMs = CACHE_GRACE_MS, now = Date.now()) {
   try {
-    const now = Date.now();
-    for (let i = 0; i < localStorage.length; i++) {
-      const storageKey = localStorage.key(i);
+    // Lấy danh sách khóa trước: xóa trong lúc duyệt sẽ làm lệch chỉ số.
+    const storageKeys = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index));
+    for (const storageKey of storageKeys) {
       if (storageKey?.startsWith(STORAGE_PREFIX)) {
         try {
           const item = JSON.parse(localStorage.getItem(storageKey) || "{}");
-          if (item?.expiresAt && item.expiresAt < now) {
+          if (item?.expiresAt && item.expiresAt + graceMs < now) {
             localStorage.removeItem(storageKey);
           }
         } catch {

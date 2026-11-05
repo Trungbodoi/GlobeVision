@@ -15,7 +15,7 @@ Trang gốc mở trang chủ song ngữ; chọn **Khám phá địa cầu 3D** �
 - **Thẻ thông tin quốc gia:** quốc kỳ, thủ đô, giờ địa phương tại thủ đô, dân số, diện tích, mật độ dân số, khu vực, tiền tệ, ngôn ngữ, múi giờ, mã điện thoại, tên bản địa.
 - **Quốc gia láng giềng:** liệt kê và tô sáng trên địa cầu; bấm để chuyển sang nước đó.
 - **So sánh tối đa 3 quốc gia:** bấm "+ So sánh" trên thẻ thông tin; bảng so sánh gồm biểu đồ cột (dân số, diện tích, mật độ) và bảng số liệu; các nước được tô màu tương ứng trên địa cầu. Chia sẻ bằng liên kết dạng `?compare=VN,JP,FR`.
-- **Học địa lý:** quiz nhận diện quốc kỳ, thủ đô, quốc gia láng giềng và tìm nước trên địa cầu; có bộ câu hỏi hằng ngày 5 câu, lọc châu lục/khu vực và ba cấp độ khó.
+- **Học địa lý:** quiz về các thành viên Liên Hợp Quốc: nhận diện quốc kỳ, thủ đô, quốc gia láng giềng và tìm nước trên địa cầu; có bộ câu hỏi hằng ngày 5 câu, lọc châu lục/khu vực và ba cấp độ khó. Câu hỏi được tạo ngẫu nhiên từ dữ liệu quốc gia, không có ngân hàng câu hỏi cố định.
 - **Thẻ ghi nhớ & tiến độ:** ôn tập theo Leitner SRS, theo dõi độ chính xác/chuỗi ngày/huy hiệu, sao lưu hoặc nhập lại tiến độ JSON lưu trên thiết bị.
 - **Hành trình khám phá:** các tuyến ASEAN, quốc gia không giáp biển, quốc đảo Thái Bình Dương, Mekong và Danube; liên kết quiz/hành trình có thể chia sẻ qua URL.
 - **Lớp bản đồ & khám phá:** choropleth dân số/mật độ và chỉ số World Bank (GDP/người, tuổi thọ, CO₂ tương đương/người); lớp sông, hồ, dãy núi, thủ đô, đường đổi ngày và ngày/đêm; lọc nhóm quốc gia, giờ thế giới, đo khoảng cách đường cung lớn và dữ kiện dân số.
@@ -104,4 +104,8 @@ src/
 
 ## Triển khai
 
-Mỗi lần push lên nhánh `main`, GitHub Actions (`.github/workflows/deploy.yml`) tự build và đưa lên GitHub Pages.
+Mỗi lần push lên nhánh `other-version`, GitHub Actions (`.github/workflows/deploy.yml`) tự chạy lint, kiểm thử, build rồi đưa lên GitHub Pages. Nếu lint hoặc kiểm thử lỗi thì bản mới không được triển khai.
+
+## Giấy phép
+
+Mã nguồn phát hành theo [giấy phép MIT](LICENSE). Dữ liệu từ các nguồn bên ngoài tuân theo giấy phép riêng, xem mục [Dữ liệu](#dữ-liệu).

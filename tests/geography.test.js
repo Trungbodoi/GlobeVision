@@ -8,9 +8,12 @@ import { getWorldBankIndicatorWorld } from "../src/services/geographyApi.js";
 import { INDICATORS } from "../src/services/worldBankApi.js";
 import {
   createDidYouKnowFacts,
+  getExplorerCountryColor,
   getGreatCircleDistanceKm,
   getMetricColor,
   getSolarCoordinates,
+  GROUP_MEMBER_COLOR,
+  GROUP_OUTSIDE_COLOR,
 } from "../src/utils/geography.js";
 
 afterEach(() => {
@@ -121,6 +124,28 @@ test("choropleth uses valid Viridis colors and ignores missing or non-positive v
   assert.equal(colors[0], "#440154");
   assert.equal(colors[2], "#fde725");
   assert.equal(getMetricColor(0, [0, 0], true), null);
+});
+
+test("group filter dims outsiders while members keep their metric color", () => {
+  const vn = { id: "VN", iso3: "VNM" };
+  const fr = { id: "FR", iso3: "FRA" };
+  const la = { id: "LA", iso3: "LAO" };
+  const metricColors = new Map([["VNM", "#21918c"], ["FRA", "#fde725"]]);
+  const groupCountryIds = new Set(["VN", "LA"]);
+
+  const both = { group: "asean", groupCountryIds, metric: "density", metricColors };
+  assert.equal(getExplorerCountryColor(vn, both), "#21918c");
+  assert.equal(getExplorerCountryColor(fr, both), GROUP_OUTSIDE_COLOR);
+  assert.equal(getExplorerCountryColor(la, both), null, "a member with no data is not shown as a value");
+
+  const groupOnly = { group: "asean", groupCountryIds, metric: "none", metricColors: new Map() };
+  assert.equal(getExplorerCountryColor(vn, groupOnly), GROUP_MEMBER_COLOR);
+  assert.equal(getExplorerCountryColor(fr, groupOnly), GROUP_OUTSIDE_COLOR);
+
+  const metricOnly = { group: "none", groupCountryIds: new Set(), metric: "density", metricColors };
+  assert.equal(getExplorerCountryColor(fr, metricOnly), "#fde725");
+
+  assert.equal(getExplorerCountryColor(vn, undefined), null, "nothing is dimmed before the explorer loads");
 });
 
 test("did-you-know facts are derived from country population records", () => {

@@ -153,7 +153,7 @@ export const STRINGS = {
     "home.random.aria": "Mở quốc gia ngẫu nhiên: {name}",
 
     "search.label": "Tìm quốc gia",
-    "search.placeholder": "Tìm quốc gia (tên hoặc mã ISO)…",
+    "search.placeholder": "Tìm quốc gia…",
     "search.noResults": "Không tìm thấy quốc gia phù hợp",
     "search.clear": "Xóa nội dung tìm kiếm",
 
@@ -265,7 +265,6 @@ export const STRINGS = {
     "unit.km2": "km²",
     "unit.perKm2": "người/km²",
     "unit.years": "năm",
-    "unit.yearsShort": "năm",
     "unit.tons": "tấn",
 
     "controls.zoomIn": "Phóng to (+)",
@@ -314,11 +313,10 @@ export const STRINGS = {
     "education.linkCopied": "Đã sao chép liên kết chia sẻ.",
     "education.askFlag": "Quốc kỳ này thuộc về quốc gia nào?",
     "education.flagPromptAlt": "Quốc kỳ cần nhận diện",
+    "education.flagUnavailable": "Không tải được ảnh quốc kỳ. Hãy kiểm tra kết nối mạng.",
     "education.askCapital": "Quốc gia nào có thủ đô là {capital}?",
     "education.askNeighbor": "Quốc gia nào có chung biên giới đất liền với {name}?",
     "education.askFind": "Hãy tìm {name} trên địa cầu.",
-    "education.noCapital": "Không có dữ liệu thủ đô cho câu hỏi này.",
-    "education.noNeighbors": "Không có dữ liệu láng giềng cho câu hỏi này.",
     "education.questionError": "Không thể tải dữ liệu cho câu hỏi.",
     "education.loadingQuestion": "Đang chuẩn bị câu hỏi…",
     "education.questionNumber": "Câu {current}/{total}",
@@ -581,7 +579,7 @@ export const STRINGS = {
     "home.random.aria": "Open random country: {name}",
 
     "search.label": "Search countries",
-    "search.placeholder": "Search a country (name or ISO code)…",
+    "search.placeholder": "Search countries…",
     "search.noResults": "No matching country",
     "search.clear": "Clear search",
 
@@ -693,7 +691,6 @@ export const STRINGS = {
     "unit.km2": "km²",
     "unit.perKm2": "people/km²",
     "unit.years": "years",
-    "unit.yearsShort": "yrs",
     "unit.tons": "tons",
 
     "controls.zoomIn": "Zoom in (+)",
@@ -742,11 +739,10 @@ export const STRINGS = {
     "education.linkCopied": "Share link copied.",
     "education.askFlag": "Which country does this flag belong to?",
     "education.flagPromptAlt": "Flag to identify",
+    "education.flagUnavailable": "The flag image could not be loaded. Please check your connection.",
     "education.askCapital": "Which country has {capital} as its capital?",
     "education.askNeighbor": "Which country shares a land border with {name}?",
     "education.askFind": "Find {name} on the globe.",
-    "education.noCapital": "Capital data is unavailable for this question.",
-    "education.noNeighbors": "Neighbor data is unavailable for this question.",
     "education.questionError": "Could not load data for this question.",
     "education.loadingQuestion": "Preparing question…",
     "education.questionNumber": "Question {current}/{total}",
@@ -863,6 +859,26 @@ export const STRINGS = {
 
 // Tên châu lục, khu vực, tiểu khu vực (dữ liệu gốc bằng tiếng Anh).
 export const PLACE_NAMES_VI = {
+  // Thủ đô có tên tiếng Việt thông dụng; các thủ đô khác giữ nguyên tên gốc.
+  Algiers: "Alger",
+  Bangkok: "Băng Cốc",
+  Beijing: "Bắc Kinh",
+  Brussels: "Bruxelles",
+  Hanoi: "Hà Nội",
+  Havana: "La Habana",
+  Lisbon: "Lisboa",
+  London: "Luân Đôn",
+  "Mexico City": "Thành phố México",
+  Moscow: "Mát-xcơ-va",
+  "Phnom Penh": "Phnôm Pênh",
+  Prague: "Praha",
+  Pyongyang: "Bình Nhưỡng",
+  Rome: "Roma",
+  Taipei: "Đài Bắc",
+  Vienna: "Viên",
+  Vientiane: "Viêng Chăn",
+  Warsaw: "Warszawa",
+
   Africa: "Châu Phi",
   Americas: "Châu Mỹ",
   Antarctica: "Châu Nam Cực",

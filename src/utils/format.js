@@ -13,6 +13,14 @@ export function formatNumber(value, lang) {
   return Math.round(value).toLocaleString(numberLocale(lang));
 }
 
+// Số thập phân theo ngôn ngữ: 74,7 / 74.7
+export function formatDecimal(value, lang, digits = 1) {
+  return value.toLocaleString(numberLocale(lang), {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+}
+
 // Số gọn cho nhãn biểu đồ: 97,3 triệu / 97.3M
 export function formatCompact(value, lang) {
   return new Intl.NumberFormat(numberLocale(lang), {

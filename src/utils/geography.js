@@ -2,6 +2,25 @@ const EARTH_RADIUS_KM = 6371.0088;
 
 const VIRIDIS = ["#440154", "#3b528b", "#21918c", "#5ec962", "#fde725"];
 
+export const GROUP_MEMBER_COLOR = "#f59e0b";
+export const GROUP_OUTSIDE_COLOR = "#334155";
+
+/**
+ * Màu của một quốc gia theo bộ lọc nhóm và chỉ số đang chọn.
+ * Nhóm chỉ quyết định nước nào được làm mờ; nước trong nhóm vẫn tô theo chỉ số.
+ * Trả về null khi không có màu riêng, nơi gọi sẽ dùng màu mặc định.
+ */
+export function getExplorerCountryColor(country, explorer) {
+  const groupActive = Boolean(explorer?.group) && explorer.group !== "none";
+  if (groupActive && !explorer.groupCountryIds?.has(country.id)) return GROUP_OUTSIDE_COLOR;
+
+  const metricColor = explorer?.metricColors?.get(country.iso3);
+  if (metricColor) return metricColor;
+
+  const metricActive = Boolean(explorer?.metric) && explorer.metric !== "none";
+  return groupActive && !metricActive ? GROUP_MEMBER_COLOR : null;
+}
+
 function parseHex(color) {
   return [
     Number.parseInt(color.slice(1, 3), 16),
@@ -38,7 +57,8 @@ export function getMetricColor(value, values, logarithmic = false) {
 export function formatMetric(value, locale, style = "number") {
   if (!Number.isFinite(value)) return "—";
   return new Intl.NumberFormat(locale, {
-    maximumFractionDigits: style === "decimal" ? 1 : 0,
+    // Dạng rút gọn giữ một số lẻ để 1,4 tỷ không bị làm tròn thành 1 tỷ.
+    maximumFractionDigits: style === "decimal" || value >= 1_000_000_000 ? 1 : 0,
     notation: value >= 1_000_000_000 ? "compact" : "standard",
   }).format(value);
 }

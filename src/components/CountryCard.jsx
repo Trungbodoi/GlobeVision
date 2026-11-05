@@ -3,7 +3,9 @@ import { getCountryName } from "../data/countries";
 import { getCapitalTimezone } from "../services/countryApi";
 import { getCountryWikiSummary } from "../services/wikiApi";
 import { getCountryWorldBankData } from "../services/worldBankApi";
+import { loadGeographyData } from "../services/geographyApi";
 import { getCapitalWeather, getWeatherDescription } from "../services/weatherApi";
+import { getCapitalCoordinates } from "../utils/geography";
 import { getNextPublicHolidays } from "../services/holidayApi";
 import { useI18n } from "../i18n/useI18n";
 import { MAX_COMPARE } from "../data/compare";
@@ -13,6 +15,7 @@ import Icon from "./Icon";
 import {
   formatCallingCodes,
   formatCurrencies,
+  formatDecimal,
   formatLanguages,
   formatNumber,
   hasValue,
@@ -58,7 +61,7 @@ function parseUtcOffset(text) {
 }
 
 function LocalTime({ capital, countryCode, timezones }) {
-  const { lang, t } = useI18n();
+  const { lang, t, place } = useI18n();
   const [zone, setZone] = useState(null);
   const [now, setNow] = useState(() => Date.now());
 
@@ -114,7 +117,7 @@ function LocalTime({ capital, countryCode, timezones }) {
     <>
       {text}
       {currentZone?.city && (
-        <span className="unit"> {t("time.atCapital", { city: currentZone.city })}</span>
+        <span className="unit"> {t("time.atCapital", { city: place(currentZone.city) })}</span>
       )}
     </>
   );
@@ -194,9 +197,21 @@ function CountryCard({
       }
     } else if (activeTab === "climate") {
       if (weatherData === null) {
-        getCapitalWeather(country.labelLat, country.labelLng).then((res) => {
-          if (!cancelled) setWeatherData(res || false);
-        });
+        // Lấy thời tiết tại thủ đô. Nơi không có dữ liệu thủ đô thì dùng tọa độ nhãn của
+        // quốc gia, và ghi chú sẽ ghi tên quốc gia thay vì tên thủ đô.
+        loadGeographyData()
+          .catch(() => [])
+          .then((features) => {
+            const capitals = features.filter((item) => item.properties.layer === "capital");
+            const location = getCapitalCoordinates(country, capitals);
+            const placeName = location.name === country.nameEn ? null : location.name;
+            return getCapitalWeather(location.lat, location.lng).then(
+              (res) => res && { ...res, placeName }
+            );
+          })
+          .then((res) => {
+            if (!cancelled) setWeatherData(res || false);
+          });
       }
     }
 
@@ -209,6 +224,12 @@ function CountryCard({
 
   const data = details?.data ?? null;
   const name = getCountryName(country, lang);
+  const gdpLabel = wbData?.gdpPerCapita?.latest
+    ? `$${formatNumber(wbData.gdpPerCapita.latest.value, lang)}`
+    : null;
+  const lifeExpectancyLabel = wbData?.lifeExpectancy?.latest
+    ? `${formatDecimal(wbData.lifeExpectancy.latest.value, lang)} ${t("unit.years")}`
+    : null;
 
   const currencies = formatCurrencies(data?.currencies, lang);
   const languages = formatLanguages(data?.languages, lang);
@@ -327,7 +348,7 @@ function CountryCard({
               </div>
             ) : data ? (
               <>
-                <InfoItem label={t("field.capital")} value={data.capital} />
+                <InfoItem label={t("field.capital")} value={place(data.capital)} />
                 <InfoItem
                   label={t("field.localTime")}
                   value={
@@ -438,9 +459,7 @@ function CountryCard({
                   <div className="wb-metric-header">
                     <span className="wb-metric-label">{t("wb.gdp")}</span>
                     <span className="wb-metric-value">
-                      {wbData.gdpPerCapita?.latest
-                        ? `$${formatNumber(wbData.gdpPerCapita.latest.value, lang)}`
-                        : t("card.noData")}
+                      {gdpLabel ?? t("card.noData")}
                     </span>
                   </div>
                   {wbData.gdpPerCapita?.latest && (
@@ -451,7 +470,7 @@ function CountryCard({
                   {wbData.gdpPerCapita?.history?.length > 1 && (
                     <SparklineChart
                       history={wbData.gdpPerCapita.history}
-                      unit="$"
+                      valueLabel={gdpLabel}
                       color="#339af0"
                     />
                   )}
@@ -462,9 +481,7 @@ function CountryCard({
                   <div className="wb-metric-header">
                     <span className="wb-metric-label">{t("wb.lifeExpectancy")}</span>
                     <span className="wb-metric-value">
-                      {wbData.lifeExpectancy?.latest
-                        ? `${wbData.lifeExpectancy.latest.value.toFixed(1)} ${t("unit.years")}`
-                        : t("card.noData")}
+                      {lifeExpectancyLabel ?? t("card.noData")}
                     </span>
                   </div>
                   {wbData.lifeExpectancy?.latest && (
@@ -475,7 +492,7 @@ function CountryCard({
                   {wbData.lifeExpectancy?.history?.length > 1 && (
                     <SparklineChart
                       history={wbData.lifeExpectancy.history}
-                      unit={t("unit.yearsShort")}
+                      valueLabel={lifeExpectancyLabel}
                       color="#20c997"
                     />
                   )}
@@ -487,7 +504,7 @@ function CountryCard({
                     <span className="wb-metric-label">{t("wb.urbanRate")}</span>
                     <span className="wb-metric-value">
                       {wbData.urbanPopulationRate?.latest
-                        ? `${wbData.urbanPopulationRate.latest.value.toFixed(1)}%`
+                        ? `${formatDecimal(wbData.urbanPopulationRate.latest.value, lang)}%`
                         : t("card.noData")}
                     </span>
                   </div>
@@ -504,7 +521,7 @@ function CountryCard({
                     <span className="wb-metric-label">{t("wb.co2")}</span>
                     <span className="wb-metric-value">
                       {wbData.co2PerCapita?.latest
-                        ? `${wbData.co2PerCapita.latest.value.toFixed(2)} ${t("unit.tons")}`
+                        ? `${formatDecimal(wbData.co2PerCapita.latest.value, lang, 2)} ${t("unit.tons")}`
                         : t("card.noData")}
                     </span>
                   </div>
@@ -521,7 +538,7 @@ function CountryCard({
                     <span className="wb-metric-label">{t("wb.literacy")}</span>
                     <span className="wb-metric-value">
                       {wbData.literacyRate?.latest
-                        ? `${wbData.literacyRate.latest.value.toFixed(1)}%`
+                        ? `${formatDecimal(wbData.literacyRate.latest.value, lang)}%`
                         : t("card.noData")}
                     </span>
                   </div>
@@ -576,7 +593,7 @@ function CountryCard({
                 </div>
 
                 <p className="weather-source-note">
-                  {weatherData.source} · {t("time.atCapital", { city: data?.capital || name })}
+                  {weatherData.source} · {t("time.atCapital", { city: place(weatherData.placeName) || name })}
                 </p>
               </div>
             ) : (

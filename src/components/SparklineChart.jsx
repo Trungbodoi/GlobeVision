@@ -4,10 +4,10 @@ import "./SparklineChart.css";
 /**
  * Biểu đồ xu hướng SVG siêu nhẹ cho chuỗi thời gian World Bank
  * @param {Array<{ year: number, value: number }>} history
- * @param {string} unit
+ * @param {string} valueLabel Giá trị mới nhất đã định dạng
  * @param {string} color
  */
-function SparklineChart({ history = [], unit = "", color = "#339af0" }) {
+function SparklineChart({ history = [], valueLabel = "", color = "#339af0" }) {
   const gradientId = useId();
 
   if (!history || history.length < 2) {
@@ -56,9 +56,7 @@ function SparklineChart({ history = [], unit = "", color = "#339af0" }) {
       </svg>
       <div className="sparkline-labels">
         <span>{firstYear}</span>
-        <span className="sparkline-range-hint">
-          {history[history.length - 1].value.toLocaleString()} {unit}
-        </span>
+        <span className="sparkline-range-hint">{valueLabel}</span>
         <span>{lastYear}</span>
       </div>
     </div>

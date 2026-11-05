@@ -86,12 +86,14 @@ export function searchCountries(list, query, lang, limit = 8) {
 
   if (!q) return [];
 
+  // Mã ISO so khớp trên từ khóa gốc, chưa bỏ dấu: "Mỹ" là tên nước, không phải mã MY.
+  const code = String(query).trim().toLowerCase();
   const results = [];
 
   for (const country of list) {
     let score = 0;
 
-    if (country.searchCodes.includes(q)) {
+    if (country.searchCodes.includes(code)) {
       score = 100;
     } else {
       for (const name of country.searchNames) {

@@ -1,6 +1,6 @@
 import { afterEach, test, vi } from "vitest";
 import assert from "node:assert/strict";
-import { apiRequest } from "../src/services/apiClient.js";
+import { apiRequest, clearExpiredCache } from "../src/services/apiClient.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -50,6 +50,32 @@ test("API requests retry network failures before caching a response", async () =
   assert.equal(requests, 2);
   assert.equal(result.data.value, "recovered");
   assert.equal(result.fromCache, false);
+});
+
+test("cache cleanup removes long-expired entries but keeps the offline fallback", () => {
+  const values = new Map();
+  vi.stubGlobal("localStorage", {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: (key) => values.delete(key),
+    key: (index) => [...values.keys()][index] ?? null,
+    get length() { return values.size; },
+  });
+  const now = 1_000_000;
+  const grace = 100;
+  const entry = (expiresAt) => JSON.stringify({ expiresAt, data: 1 });
+  values.set("globevision.cache.old1", entry(now - grace - 1));
+  values.set("globevision.cache.old2", entry(now - grace - 2));
+  values.set("globevision.cache.recent", entry(now - 1));
+  values.set("globevision.cache.fresh", entry(now + 1));
+  values.set("globevision.theme", "dark");
+
+  clearExpiredCache(grace, now);
+
+  assert.deepEqual(
+    [...values.keys()].sort(),
+    ["globevision.cache.fresh", "globevision.cache.recent", "globevision.theme"]
+  );
 });
 
 test("API requests use expired stored data as a stale offline fallback", async () => {

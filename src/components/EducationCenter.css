@@ -57,7 +57,9 @@
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
 }
 
-.education-backdrop.is-globe-answering {
+/* Bảng dời sang một bên để nhìn và bấm được vào địa cầu.
+   Chiều rộng khớp với DOCKED_PANEL_SPACE trong WorldGlobe.jsx. */
+.education-backdrop.is-docked {
   display: block;
   padding: 20px;
   background: transparent;
@@ -65,11 +67,52 @@
   pointer-events: none;
 }
 
-.education-backdrop.is-globe-answering .education-center {
-  width: min(430px, calc(100vw - 40px));
-  max-height: calc(100vh - 40px);
+.education-backdrop.is-docked .education-center {
+  width: 430px;
+  /* Chừa chỗ cho nhóm nút điều khiển địa cầu ở góc dưới bên phải. */
+  max-height: calc(100vh - 110px);
   margin-left: auto;
+  padding: 20px;
   pointer-events: auto;
+  animation: education-dock 220ms ease-out;
+}
+
+.education-backdrop.is-docked .education-tabs {
+  margin: 14px 0 12px;
+}
+
+.education-backdrop.is-docked .education-content {
+  min-height: 0;
+}
+
+.education-backdrop.is-docked .education-intro {
+  display: none;
+}
+
+.education-backdrop.is-docked .education-question {
+  margin: 12px 0;
+  padding: 16px;
+}
+
+.education-backdrop.is-docked .education-path-picker {
+  margin: 0 0 12px;
+}
+
+.education-backdrop.is-docked .education-path-card {
+  padding: 14px;
+}
+
+@keyframes education-dock {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .education-backdrop.is-docked .education-center {
+    animation: none;
+  }
 }
 
 .education-header,
@@ -257,8 +300,24 @@
 }
 
 .education-flag {
-  font-size: 58px;
-  line-height: 1.1;
+  display: block;
+  max-width: 100%;
+  height: 96px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--border-color), 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+.education-flag-missing {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.education-inline-flag {
+  display: inline-block;
+  height: 0.85em;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--border-color);
+  vertical-align: -0.05em;
 }
 
 .education-options {
@@ -540,6 +599,62 @@
   opacity: 1;
 }
 
+/* Màn hình hẹp: bảng nằm ở nửa dưới, địa cầu ở nửa trên (khớp với fitGlobe). */
+@media (max-width: 900px) {
+  .education-backdrop.is-docked {
+    display: flex;
+    align-items: flex-end;
+    padding: 8px;
+  }
+
+  .education-backdrop.is-docked .education-center {
+    width: 100%;
+    max-height: calc(50dvh - 16px);
+    margin: 0;
+    padding: 12px 14px;
+  }
+
+  .education-backdrop.is-docked .education-eyebrow {
+    display: none;
+  }
+
+  .education-backdrop.is-docked .education-header h2 {
+    font-size: 18px;
+  }
+
+  .education-backdrop.is-docked .education-close {
+    width: 34px;
+    height: 34px;
+  }
+
+  .education-backdrop.is-docked .education-tabs {
+    margin: 8px 0;
+    padding: 3px;
+  }
+
+  .education-backdrop.is-docked .education-tabs button {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .education-backdrop.is-docked .education-question {
+    gap: 6px;
+    margin: 8px 0;
+    padding: 10px;
+  }
+
+  .education-backdrop.is-docked .education-flag {
+    height: 56px;
+  }
+
+  @keyframes education-dock {
+    from {
+      opacity: 0;
+      transform: translateY(32px);
+    }
+  }
+}
+
 @media (max-width: 600px) {
   .education-launcher {
     min-height: 44px;
@@ -558,25 +673,23 @@
     border-radius: 18px;
   }
 
-  .education-backdrop.is-globe-answering {
-    display: flex;
-    align-items: flex-end;
-    padding: 8px;
-  }
-
-  .education-backdrop.is-globe-answering .education-center {
-    width: 100%;
-    max-height: min(260px, 45dvh);
-    margin: 0;
-    padding: 14px;
-  }
-
   .education-settings {
     grid-template-columns: 1fr;
   }
 
   .education-options {
     grid-template-columns: 1fr;
+  }
+
+  .education-backdrop.is-docked .education-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .education-backdrop.is-docked .education-options button {
+    min-height: 40px;
+    padding: 6px 10px;
+    font-size: 13px;
   }
 
   .education-stats {

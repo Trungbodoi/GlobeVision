@@ -156,7 +156,7 @@ function ComparePanel({ countries, byIso3, onClose }) {
       .map((neighbor) => getCountryName(neighbor, lang));
 
   const rows = [
-    { label: t("field.capital"), value: (c) => c.data?.capital },
+    { label: t("field.capital"), value: (c) => place(c.data?.capital) },
     {
       label: t("field.region"),
       value: (c) => place(c.data?.region || c.country.continent),

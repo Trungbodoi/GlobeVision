@@ -2,12 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCountryName } from "../data/countries";
 import { getCountryInfo } from "../services/countryApi";
 import {
-  buildRegionAnswerOptions,
-  createSeededRandom,
+  answersOnGlobe,
+  buildQuestionOptions,
   generateQuizQuestions,
+  getAnswerFromCountryInfo,
   getDailySeed,
-  getFlagEmoji,
+  getQuizCountries,
   getRegionOptions,
+  getReplacementCountries,
+  needsCountryInfo,
   QUIZ_DIFFICULTIES,
   QUIZ_TYPES,
 } from "../education/quizEngine";
@@ -22,6 +25,7 @@ import {
   saveProgress,
 } from "../education/progressStore";
 import { useI18n } from "../i18n/useI18n";
+import FlagImage from "./FlagImage";
 import Icon from "./Icon";
 import { createUrlWithParams } from "../utils/urlState";
 import "./EducationCenter.css";
@@ -39,6 +43,17 @@ function shareUrl({ quiz, difficulty, type, path }) {
   });
 }
 
+// Lỗi 4xx nghĩa là API không có nước này, khác với lỗi mạng (có thể thử lại).
+async function loadCountryInfoOrNull(country) {
+  try {
+    const { data } = await getCountryInfo(country.apiCode);
+    return data;
+  } catch (error) {
+    if (error.status >= 400 && error.status < 500) return null;
+    throw error;
+  }
+}
+
 function getStoredProgress() {
   try {
     return { progress: loadProgress(), error: "" };
@@ -47,7 +62,15 @@ function getStoredProgress() {
   }
 }
 
-function EducationCenter({ countries, onClose, onSelectCountry, onGlobeAnswer, initialConfig }) {
+function EducationCenter({
+  countries,
+  onClose,
+  onSelectCountry,
+  onGlobeAnswer,
+  onDockChange,
+  onQuizStateChange,
+  initialConfig,
+}) {
   const { lang, t, place } = useI18n();
   const [view, setView] = useState(initialConfig.path ? "paths" : initialConfig.view || "quiz");
   const [quizType, setQuizType] = useState(
@@ -78,69 +101,108 @@ function EducationCenter({ countries, onClose, onSelectCountry, onGlobeAnswer, i
   const [flashcardIndex, setFlashcardIndex] = useState(0);
   const [flashcardFlipped, setFlashcardFlipped] = useState(false);
 
-  const regions = useMemo(() => getRegionOptions(countries), [countries]);
+  const quizCountries = useMemo(() => getQuizCountries(countries), [countries]);
+  const regions = useMemo(() => getRegionOptions(quizCountries), [quizCountries]);
   const selectedRegion = regions.some((item) => item.value === region) ? region : "all";
+  const sessionQuestions = session?.questions;
   const question = session?.questions[session.index] ?? null;
   const promptCountry = question
     ? countryFromCode(question.promptCountry.id, countries)
     : null;
   const answerHandlerRef = useRef(null);
   const dailyStartHandledRef = useRef(false);
+  const quizFinished = Boolean(session) && session.index >= session.questions.length;
+  const quizRunning = view === "quiz" && Boolean(session) && !quizFinished;
+  const mapAnswerMode = Boolean(
+    question &&
+    resolvedQuestion?.key === question.id &&
+    answersOnGlobe(question) &&
+    !answerResult
+  );
+  // Khi làm quiz và đi theo hành trình, người học cần nhìn và bấm được vào địa cầu.
+  const docked = quizRunning || view === "paths";
+
+  useEffect(() => {
+    onDockChange(docked);
+    return () => onDockChange(false);
+  }, [docked, onDockChange]);
+
+  // Sau khi trả lời, địa cầu tô và bay đến đáp án. Khóa dạng chuỗi để chỉ báo
+  // cho địa cầu khi đáp án thực sự đổi.
+  let revealIds = "";
+  if (answerResult && resolvedQuestion) {
+    const { answerIds, shownAnswerId } = resolvedQuestion;
+    revealIds = answerResult.correct
+      ? answerResult.countryId
+      : [shownAnswerId, ...answerIds.filter((id) => id !== shownAnswerId)].join(",");
+  }
+  const revealChosenId = answerResult && !answerResult.correct ? answerResult.countryId : null;
+
+  useEffect(() => {
+    const correctIds = revealIds ? revealIds.split(",") : null;
+    onQuizStateChange(quizRunning ? {
+      reveal: correctIds && { correctIds, chosenId: revealChosenId, focusId: correctIds[0] },
+    } : null);
+    return () => onQuizStateChange(null);
+  }, [quizRunning, revealIds, revealChosenId, onQuizStateChange]);
 
   useEffect(() => {
     if (!question || !promptCountry) return;
 
     let cancelled = false;
 
+    function updateQuestion(changes) {
+      setSession((current) => current && {
+        ...current,
+        questions: current.questions.map((item) =>
+          item.id === question.id ? { ...item, ...changes } : item
+        ),
+      });
+    }
+
+    function publishQuestion({ answerIds, shownAnswerId, capital }) {
+      const optionIds = answersOnGlobe(question)
+        ? []
+        : buildQuestionOptions({
+            countries: quizCountries,
+            region: selectedRegion,
+            promptId: promptCountry.id,
+            answerIds,
+            shownAnswerId,
+            count: question.difficulty === "easy" ? 4 : 6,
+            seed: question.seed,
+          }).map((country) => country.id);
+      setResolvedQuestion({ key: question.id, capital, answerIds, shownAnswerId, optionIds });
+    }
+
     async function resolve() {
       try {
-        let answerIds = [promptCountry.id];
-
-        if (question.type === "capital" || question.type === "neighbor") {
-          const result = await getCountryInfo(promptCountry.apiCode);
-          if (question.type === "capital" && !result.data?.capital) {
-            throw new Error(t("education.noCapital"));
-          }
-          if (question.type === "neighbor") {
-            const neighbors = (result.data?.borders ?? [])
-              .map((code) => countries.find((country) => country.iso3 === code))
-              .filter((country) => country?.apiCode);
-            if (neighbors.length === 0) throw new Error(t("education.noNeighbors"));
-            const random = createSeededRandom(question.seed);
-            answerIds = [neighbors[Math.floor(random() * neighbors.length)].id];
-          }
-          if (!cancelled) {
-            const optionIds = question.difficulty === "hard"
-              ? []
-              : buildRegionAnswerOptions(
-                  countries,
-                  selectedRegion,
-                  answerIds,
-                  question.difficulty === "easy" ? 4 : 6,
-                  question.seed
-                ).map((country) => country.id);
-            setResolvedQuestion({
-              key: question.id,
-              capital: result.data?.capital,
-              answerIds,
-              optionIds,
-            });
-          }
+        if (!needsCountryInfo(question)) {
+          publishQuestion({ answerIds: [promptCountry.id], shownAnswerId: promptCountry.id });
           return;
         }
 
-        const optionIds = question.difficulty === "hard"
-          ? []
-          : buildRegionAnswerOptions(
-              countries,
-              selectedRegion,
-              answerIds,
-              question.difficulty === "easy" ? 4 : 6,
-              question.seed
-            ).map((country) => country.id);
-        if (!cancelled) {
-          setResolvedQuestion({ key: question.id, answerIds, optionIds });
+        // Quốc đảo không có láng giềng, vài vùng không có thủ đô: thử lại không giúp
+        // được gì nên tự đổi sang nước khác, hết nước thì đổi sang câu quốc kỳ.
+        const candidates = [
+          promptCountry,
+          ...getReplacementCountries({
+            countries: quizCountries,
+            region: selectedRegion,
+            questions: sessionQuestions,
+            seed: question.seed,
+          }),
+        ];
+        for (const candidate of candidates) {
+          const info = await loadCountryInfoOrNull(candidate);
+          if (cancelled) return;
+          const answer = info && getAnswerFromCountryInfo(question, candidate, info, quizCountries);
+          if (!answer) continue;
+          if (candidate === promptCountry) publishQuestion(answer);
+          else updateQuestion({ promptCountry: candidate });
+          return;
         }
+        updateQuestion({ type: "flag" });
       } catch (error) {
         if (!cancelled) {
           setResolutionError({
@@ -155,18 +217,18 @@ function EducationCenter({ countries, onClose, onSelectCountry, onGlobeAnswer, i
     return () => {
       cancelled = true;
     };
-  }, [question, promptCountry, countries, resolveAttempt, selectedRegion, t]);
+  }, [question, promptCountry, sessionQuestions, quizCountries, resolveAttempt, selectedRegion, t]);
 
   useEffect(() => {
-    const active = Boolean(
-      question &&
-      resolvedQuestion?.key === question.id &&
-      question.difficulty === "hard" &&
-      !answerResult
-    );
-    onGlobeAnswer(active ? (countryId) => answerHandlerRef.current?.(countryId) : null);
+    // Trong lúc làm quiz, bấm trên địa cầu ngoài lượt trả lời sẽ không làm gì,
+    // để không chọn nhầm quốc gia và làm lộ đáp án của câu sau.
+    const ignoreClick = () => {};
+    const handler = mapAnswerMode
+      ? (countryId) => answerHandlerRef.current?.(countryId)
+      : quizRunning ? ignoreClick : null;
+    onGlobeAnswer(handler);
     return () => onGlobeAnswer(null);
-  }, [question, resolvedQuestion, answerResult, onGlobeAnswer, answerHandlerRef]);
+  }, [mapAnswerMode, quizRunning, onGlobeAnswer, answerHandlerRef]);
 
   useEffect(() => {
     answerHandlerRef.current = submitAnswer;
@@ -189,7 +251,7 @@ function EducationCenter({ countries, onClose, onSelectCountry, onGlobeAnswer, i
         ? `${getDailySeed()}-${selectedRegion}`
         : `quiz-${Date.now()}-${Math.random()}`;
       const questions = generateQuizQuestions({
-        countries,
+        countries: quizCountries,
         region: selectedRegion,
         type: daily ? "mixed" : quizType,
         difficulty,
@@ -202,7 +264,7 @@ function EducationCenter({ countries, onClose, onSelectCountry, onGlobeAnswer, i
     } catch (error) {
       setNotice(error.message);
     }
-  }, [countries, selectedRegion, quizType, difficulty]);
+  }, [quizCountries, selectedRegion, quizType, difficulty]);
 
   useEffect(() => {
     if (initialConfig.intent !== "daily" || dailyStartHandledRef.current) return;
@@ -214,8 +276,7 @@ function EducationCenter({ countries, onClose, onSelectCountry, onGlobeAnswer, i
     if (!resolvedQuestion || answerResult || !question) return;
     answerHandlerRef.current = null;
     const correct = resolvedQuestion.answerIds.includes(countryId);
-    const reviewId = resolvedQuestion.answerIds[0];
-    const nextProgress = recordAnswer(progress, reviewId, correct);
+    const nextProgress = recordAnswer(progress, promptCountry.id, correct);
     persistProgress(nextProgress);
     setAnswerResult({ countryId, correct });
     setSession((current) => ({
@@ -238,7 +299,7 @@ function EducationCenter({ countries, onClose, onSelectCountry, onGlobeAnswer, i
 
   function startFlashcards() {
     const due = selectDueCards(progress.cards);
-    const ids = due.length ? due : countries.filter((country) => country.apiCode).map((country) => country.id);
+    const ids = due.length ? due : quizCountries.map((country) => country.id);
     setFlashcardIds(ids);
     setFlashcardIndex(0);
     setFlashcardFlipped(false);
@@ -308,42 +369,57 @@ function EducationCenter({ countries, onClose, onSelectCountry, onGlobeAnswer, i
   const pathCountries = activePath.stops.map((id) => countryFromCode(id, countries)).filter(Boolean);
   const currentPathCountry = pathCountries[pathStop] ?? null;
   const activeFlashcard = countryFromCode(flashcardIds[flashcardIndex], countries);
-  const mapAnswerMode = Boolean(
-    question &&
-    resolvedQuestion?.key === question.id &&
-    question.difficulty === "hard" &&
-    !answerResult
-  );
   const totalAccuracy = progress.stats.totalAnswered
     ? Math.round((progress.stats.totalCorrect / progress.stats.totalAnswered) * 100)
     : 0;
-  const quizFinished = session && session.index >= session.questions.length;
+
+  // Địa cầu luôn bay theo điểm dừng đang hiển thị của hành trình.
+  const pathStopId = view === "paths" ? currentPathCountry?.id : null;
+  useEffect(() => {
+    if (pathStopId) onSelectCountry(pathStopId);
+  }, [pathStopId, onSelectCountry]);
+
+  // Cuộn để nút của điểm dừng hiện tại luôn nằm giữa dải điểm dừng.
+  const pathStopsRef = useRef(null);
+  useEffect(() => {
+    const container = pathStopsRef.current;
+    const active = container?.querySelector(".is-active");
+    if (!active) return;
+    const offset = active.getBoundingClientRect().left - container.getBoundingClientRect().left;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    container.scrollBy({
+      left: offset - (container.clientWidth - active.offsetWidth) / 2,
+      behavior: reduceMotion ? "auto" : "smooth",
+    });
+  }, [pathStopId]);
 
   function questionPrompt() {
     if (!question || !promptCountry) return "";
     const name = getCountryName(promptCountry, lang);
+    const isResolved = resolvedQuestion?.key === question.id;
     switch (question.type) {
       case "flag":
         return t("education.askFlag");
       case "capital":
         return t("education.askCapital", {
-          capital: resolvedQuestion?.key === question.id ? resolvedQuestion.capital : "…",
+          capital: isResolved ? place(resolvedQuestion.capital) : "…",
         });
       case "neighbor":
-        return t("education.askNeighbor", { name });
+        // Chưa hiện tên nước khi chưa biết nước này có hỏi được hay không.
+        return t("education.askNeighbor", { name: isResolved ? name : "…" });
       default:
         return t("education.askFind", { name });
     }
   }
 
   return (
-    <div className={`education-backdrop${mapAnswerMode ? " is-globe-answering" : ""}`} onMouseDown={(event) => {
+    <div className={`education-backdrop${docked ? " is-docked" : ""}`} onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose();
     }}>
       <section
         className="education-center"
         role="dialog"
-        aria-modal={mapAnswerMode ? undefined : "true"}
+        aria-modal={docked ? undefined : "true"}
         aria-labelledby="education-title"
       >
         <header className="education-header">
@@ -410,7 +486,7 @@ function EducationCenter({ countries, onClose, onSelectCountry, onGlobeAnswer, i
                   </label>
                 </div>
                 <p className="education-hint">
-                  {difficulty === "hard" ? t("education.hardHint") : t("education.choiceHint", { count: difficulty === "easy" ? 4 : 6 })}
+                  {answersOnGlobe({ type: quizType, difficulty }) ? t("education.hardHint") : t("education.choiceHint", { count: difficulty === "easy" ? 4 : 6 })}
                 </p>
                 <div className="education-actions">
                   <button type="button" className="education-primary" onClick={() => startQuiz(false)}>{t("education.startQuiz")}</button>
@@ -429,9 +505,13 @@ function EducationCenter({ countries, onClose, onSelectCountry, onGlobeAnswer, i
                 <div className="education-question">
                   <span className="education-question-type">{t(`education.type.${question.type}`)}</span>
                   {question.type === "flag" && (
-                    <span className="education-flag" role="img" aria-label={t("education.flagPromptAlt")}>
-                      {getFlagEmoji(promptCountry.iso2)}
-                    </span>
+                    <FlagImage
+                      key={promptCountry.iso2}
+                      className="education-flag"
+                      iso2={promptCountry.iso2}
+                      alt={t("education.flagPromptAlt")}
+                      fallback={<span className="education-flag-missing" role="alert">{t("education.flagUnavailable")}</span>}
+                    />
                   )}
                   <h3>{questionPrompt()}</h3>
                 </div>
@@ -451,10 +531,10 @@ function EducationCenter({ countries, onClose, onSelectCountry, onGlobeAnswer, i
                   </div>
                 )}
                 {resolutionError?.key !== question.id && resolvedQuestion?.key !== question.id && <p className="education-loading" role="status">{t("education.loadingQuestion")}</p>}
-                {resolvedQuestion?.key === question.id && question.difficulty === "hard" && !answerResult && (
+                {mapAnswerMode && (
                   <p className="education-hint">{t("education.hardHint")}</p>
                 )}
-                {resolvedQuestion?.key === question.id && question.difficulty !== "hard" && (
+                {resolvedQuestion?.key === question.id && !answersOnGlobe(question) && (
                   <div className="education-options">
                     {resolvedQuestion.optionIds.map((id) => {
                       const country = countryFromCode(id, countries);
@@ -478,7 +558,13 @@ function EducationCenter({ countries, onClose, onSelectCountry, onGlobeAnswer, i
                 {answerResult && (
                   <div className={`education-answer ${answerResult.correct ? "is-correct" : "is-wrong"}`} role="status">
                     <strong>{t(answerResult.correct ? "education.correct" : "education.incorrect")}</strong>
-                    {!answerResult.correct && <span>{getCountryName(countryFromCode(resolvedQuestion.answerIds[0], countries), lang)}</span>}
+                    {!answerResult.correct && (
+                      <span>
+                        {resolvedQuestion.answerIds
+                          .map((id) => getCountryName(countryFromCode(id, countries), lang))
+                          .join(", ")}
+                      </span>
+                    )}
                     <button type="button" className="education-primary" onClick={advanceQuestion}>{t("education.next")}</button>
                   </div>
                 )}
@@ -516,7 +602,7 @@ function EducationCenter({ countries, onClose, onSelectCountry, onGlobeAnswer, i
                   <span>{flashcardFlipped ? t("education.flashcardBack") : t("education.flashcardFront")}</span>
                   {flashcardFlipped ? (
                     <>
-                      <strong>{getFlagEmoji(activeFlashcard.iso2)} {getCountryName(activeFlashcard, lang)}</strong>
+                      <strong><FlagImage key={activeFlashcard.iso2} className="education-inline-flag" iso2={activeFlashcard.iso2} /> {getCountryName(activeFlashcard, lang)}</strong>
                       <span>{place(activeFlashcard.continent)} · {place(activeFlashcard.subregion)}</span>
                       {activeFlashcard.popEst > 0 && <span>{t("field.population")}: {Math.round(activeFlashcard.popEst).toLocaleString(lang === "vi" ? "vi-VN" : "en-US")}</span>}
                     </>
@@ -547,9 +633,9 @@ function EducationCenter({ countries, onClose, onSelectCountry, onGlobeAnswer, i
             <div className="education-path-card">
               <h3>{t(activePath.titleKey)}</h3>
               <p>{t(activePath.descriptionKey)}</p>
-              <div className="education-path-stops">
+              <div className="education-path-stops" ref={pathStopsRef}>
                 {pathCountries.map((country, index) => (
-                  <button type="button" className={index === pathStop ? "is-active" : ""} key={country.id} onClick={() => { setPathStop(index); onSelectCountry(country.id); }}>
+                  <button type="button" className={index === pathStop ? "is-active" : ""} key={country.id} onClick={() => setPathStop(index)}>
                     <span>{index + 1}</span>{getCountryName(country, lang)}
                   </button>
                 ))}
@@ -557,11 +643,11 @@ function EducationCenter({ countries, onClose, onSelectCountry, onGlobeAnswer, i
               {currentPathCountry && (
                 <div className="education-stop-detail">
                   <span>{t("education.stop", { current: pathStop + 1, total: pathCountries.length })}</span>
-                  <strong>{getFlagEmoji(currentPathCountry.iso2)} {getCountryName(currentPathCountry, lang)}</strong>
+                  <strong><FlagImage key={currentPathCountry.iso2} className="education-inline-flag" iso2={currentPathCountry.iso2} /> {getCountryName(currentPathCountry, lang)}</strong>
                   <p>{t("education.stopFact", { name: getCountryName(currentPathCountry, lang), region: place(currentPathCountry.subregion || currentPathCountry.continent), population: Math.round(currentPathCountry.popEst || 0).toLocaleString(lang === "vi" ? "vi-VN" : "en-US") })}</p>
                   <div className="education-actions">
-                    <button type="button" className="education-secondary" disabled={pathStop === 0} onClick={() => { const index = pathStop - 1; setPathStop(index); onSelectCountry(pathCountries[index].id); }}>{t("education.previousStop")}</button>
-                    <button type="button" className="education-primary" disabled={pathStop >= pathCountries.length - 1} onClick={() => { const index = pathStop + 1; setPathStop(index); onSelectCountry(pathCountries[index].id); }}>{t("education.nextStop")}</button>
+                    <button type="button" className="education-secondary" disabled={pathStop === 0} onClick={() => setPathStop(pathStop - 1)}>{t("education.previousStop")}</button>
+                    <button type="button" className="education-primary" disabled={pathStop >= pathCountries.length - 1} onClick={() => setPathStop(pathStop + 1)}>{t("education.nextStop")}</button>
                     <button type="button" className="education-secondary" onClick={() => shareConfiguration(activePath.id)}>{t("education.sharePath")}</button>
                   </div>
                 </div>

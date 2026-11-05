@@ -16,6 +16,7 @@ import {
   writeCompareParam,
   writeCountryParam,
 } from "../utils/urlState";
+import { getExplorerCountryColor } from "../utils/geography";
 import { recordRecentCountry } from "../utils/recentCountries";
 import { getCountryInfo } from "../services/countryApi";
 import { loadStaticGeoJson } from "../services/staticDataApi";
@@ -23,6 +24,7 @@ import { loadCountries } from "../data/countries";
 import { COMPARE_COLORS, MAX_COMPARE } from "../data/compare";
 import WorldExplorer from "./WorldExplorer";
 import { useI18n } from "../i18n/useI18n";
+import { PLACE_NAMES_VI } from "../i18n/strings";
 
 import CountryCard from "./CountryCard";
 import CountrySearch from "./CountrySearch";
@@ -37,13 +39,20 @@ import "./WorldGlobe.css";
 // Chiều rộng thẻ thông tin + lề (xem CountryCard.css).
 const CARD_SPACE = 370 + 24 * 2;
 const MOBILE_BREAKPOINT = 600;
+// Bảng học tập khi nhường chỗ cho địa cầu (xem EducationCenter.css).
+const DOCKED_PANEL_SPACE = 430 + 20 * 2;
+const DOCKED_PANEL_BREAKPOINT = 900;
 
 const COLORS = {
   defaultDark: "#eeeeee",
   hover: "#4dabf7",
   selected: "#1c7ed6",
   neighbor: "#a5d8ff",
+  quizCorrect: "#22c55e",
+  quizWrong: "#ef4444",
 };
+
+const DEFAULT_ALTITUDE = 2.5;
 
 const SCENE_COLORS = { background: 0x000000, globe: 0x061238, sides: "#cccccc" };
 
@@ -64,6 +73,19 @@ function escapeHtml(text) {
 function altitudeFor(country) {
   if (!Number.isFinite(country.span)) return 2.5;
   return Math.min(2.5, Math.max(0.65, 0.6 + country.span * 0.018));
+}
+
+function flyToCountry(globe, country) {
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  globe.pointOfView(
+    {
+      lat: country.labelLat,
+      lng: country.labelLng,
+      altitude: altitudeFor(country),
+    },
+    prefersReducedMotion ? 0 : 1000
+  );
 }
 
 function getPathFeatures(features) {
@@ -96,6 +118,8 @@ function WorldGlobe({ onProgress, onLoaded, theme, onToggleTheme, onHome }) {
     };
   });
   const [educationOpen, setEducationOpen] = useState(educationConfig.open);
+  const [educationDocked, setEducationDocked] = useState(false);
+  const [quizState, setQuizState] = useState(null);
   const [explorerOpen, setExplorerOpen] = useState(() => {
     const params = readRouteSearchParams();
     return ["metric", "layer", "layers", "group"].some((key) => params.has(key));
@@ -147,6 +171,12 @@ function WorldGlobe({ onProgress, onLoaded, theme, onToggleTheme, onHome }) {
 
   const setEducationAnswerHandler = useCallback((handler) => {
     educationAnswerRef.current = handler;
+  }, []);
+
+  // Bảng học tập dời sang một bên: đóng bảng khám phá để địa cầu không bị che.
+  const handleEducationDock = useCallback((docked) => {
+    setEducationDocked(docked);
+    if (docked) setExplorerOpen(false);
   }, []);
 
   const closeEducation = useCallback(() => {
@@ -211,6 +241,7 @@ function WorldGlobe({ onProgress, onLoaded, theme, onToggleTheme, onHome }) {
         selectedId: current,
         neighborIds,
         compareColors,
+        quizState: quiz,
       } = highlightRef.current;
       const explorer = highlightRef.current.explorer;
       const defaultColor = COLORS.defaultDark;
@@ -219,19 +250,17 @@ function WorldGlobe({ onProgress, onLoaded, theme, onToggleTheme, onHome }) {
         if (properties.layer === "lake") return "#38bdf8";
         if (properties.layer === "mountainRange") return "#a78b6a";
         if (!properties.id) return defaultColor;
+        if (quiz?.reveal?.correctIds.includes(properties.id)) return COLORS.quizCorrect;
+        if (quiz?.reveal?.chosenId === properties.id) return COLORS.quizWrong;
         if (properties.id === hoverId) return COLORS.hover;
-        if (compareColors.has(properties.id)) return compareColors.get(properties.id);
-        if (properties.id === current) return COLORS.selected;
-        if (neighborIds.has(properties.id)) return COLORS.neighbor;
-        if (explorer?.group !== "none" && !explorer?.groupCountryIds?.has(properties.id)) {
-          return "#334155";
-        }
-        if (explorer?.group !== "none") return "#f59e0b";
-        if (explorer?.metricColors?.has(properties.iso3)) {
-          return explorer.metricColors.get(properties.iso3);
+        // Khi làm quiz, các nước đang chọn hoặc so sánh không được tô để tránh lộ đáp án.
+        if (!quiz) {
+          if (compareColors.has(properties.id)) return compareColors.get(properties.id);
+          if (properties.id === current) return COLORS.selected;
+          if (neighborIds.has(properties.id)) return COLORS.neighbor;
         }
 
-        return defaultColor;
+        return getExplorerCountryColor(properties, explorer) ?? defaultColor;
       });
     }
 
@@ -242,9 +271,14 @@ function WorldGlobe({ onProgress, onLoaded, theme, onToggleTheme, onHome }) {
 
       const width = window.innerWidth;
       const height = window.innerHeight;
-      const cardOpen = Boolean(highlightRef.current.selectedId);
+      const docked = highlightRef.current.educationDocked;
+      const cardOpen = !docked && Boolean(highlightRef.current.selectedId);
 
-      if (cardOpen && width > MOBILE_BREAKPOINT) {
+      if (docked && width > DOCKED_PANEL_BREAKPOINT) {
+        globe.width(width - DOCKED_PANEL_SPACE).height(height);
+      } else if (docked) {
+        globe.width(width).height(Math.round(height * 0.5));
+      } else if (cardOpen && width > MOBILE_BREAKPOINT) {
         globe.width(width - CARD_SPACE).height(height);
       } else if (cardOpen) {
         globe.width(width).height(Math.round(height * 0.45));
@@ -300,6 +334,12 @@ function WorldGlobe({ onProgress, onLoaded, theme, onToggleTheme, onHome }) {
           metalness: 0.05,
         });
 
+        // Khi đang làm quiz, bấm trên địa cầu là trả lời thay vì chọn quốc gia.
+        const pickCountry = (countryId) => {
+          if (educationAnswerRef.current) educationAnswerRef.current(countryId);
+          else selectCountry(countryId);
+        };
+
         globe
           .showAtmosphere(false)
           .globeMaterial(globeMat)
@@ -311,6 +351,8 @@ function WorldGlobe({ onProgress, onLoaded, theme, onToggleTheme, onHome }) {
             return 0.01;
           })
           .polygonLabel((feature) => {
+            // Khi làm quiz, tên nước khi rê chuột sẽ làm lộ đáp án.
+            if (highlightRef.current.quizState) return "";
             const { properties } = feature;
             const name = langRef.current === "en" ? properties.nameEn : properties.nameVi;
             const label = properties.layer
@@ -347,12 +389,7 @@ function WorldGlobe({ onProgress, onLoaded, theme, onToggleTheme, onHome }) {
                   booleanPointInPolygon(clickedPoint, countryFeature)
                 )?.properties.id
               : null);
-            if (!countryId) return;
-            if (educationAnswerRef.current) {
-              educationAnswerRef.current(countryId);
-            } else {
-              selectCountry(countryId);
-            }
+            if (countryId) pickCountry(countryId);
           })
           .onPolygonHover((feature) => {
             highlightRef.current.hoverId = feature?.properties.id ?? null;
@@ -376,13 +413,18 @@ function WorldGlobe({ onProgress, onLoaded, theme, onToggleTheme, onHome }) {
           .pointAltitude(0.012)
           .pointRadius(0.1)
           .pointColor(() => "#ff0000")
-          .pointLabel((feature) => `
-            <div style="background:white;padding:6px 9px;border-radius:6px;color:#0f172a;font-size:13px;font-weight:600">
-              <b>${escapeHtml(feature.properties.name)}</b>
-            </div>
-          `)
+          .pointLabel((feature) => {
+            if (highlightRef.current.quizState) return "";
+            const { name } = feature.properties;
+            const label = langRef.current === "vi" ? PLACE_NAMES_VI[name] || name : name;
+            return `
+              <div style="background:white;padding:6px 9px;border-radius:6px;color:#0f172a;font-size:13px;font-weight:600">
+                <b>${escapeHtml(label)}</b>
+              </div>
+            `;
+          })
           .onPointClick((feature) => {
-            if (feature.properties.countryId) selectCountry(feature.properties.countryId);
+            if (feature.properties.countryId) pickCountry(feature.properties.countryId);
           })
           .arcsData([])
           .arcStartLat((arc) => arc.start.lat)
@@ -599,10 +641,12 @@ function WorldGlobe({ onProgress, onLoaded, theme, onToggleTheme, onHome }) {
   // ----------------------------------------------------------------
   useEffect(() => {
     const handleKeyDown = (event) => {
+      // Không chiếm phím của ô nhập liệu, ô chọn và các phím tắt trình duyệt (Ctrl+R...).
       const tag = event.target?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || event.target?.isContentEditable) {
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || event.target?.isContentEditable) {
         return;
       }
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
 
       const globe = globeInstanceRef.current?.globe;
       if (!globe) return;
@@ -751,18 +795,33 @@ function WorldGlobe({ onProgress, onLoaded, theme, onToggleTheme, onHome }) {
 
     if (!globe || !selectedCountry) return;
 
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const duration = prefersReducedMotion ? 0 : 1000;
-
-    globe.pointOfView(
-      {
-        lat: selectedCountry.labelLat,
-        lng: selectedCountry.labelLng,
-        altitude: altitudeFor(selectedCountry),
-      },
-      duration
-    );
+    flyToCountry(globe, selectedCountry);
   }, [selectedCountry]);
+
+  // ----------------------------------------------------------------
+  // Quiz: ẩn gợi ý trên địa cầu, sau khi trả lời thì tô và bay đến đáp án
+  // ----------------------------------------------------------------
+  const revealShownRef = useRef(false);
+
+  useEffect(() => {
+    highlightRef.current.quizState = quizState;
+    const instance = globeInstanceRef.current;
+    if (!instance) return;
+
+    instance.applyColors();
+
+    const target = quizState?.reveal ? countryData?.byId.get(quizState.reveal.focusId) : null;
+    if (target) {
+      flyToCountry(instance.globe, target);
+    } else if (revealShownRef.current) {
+      // Sang câu mới thì lùi camera ra để người học thấy cả địa cầu.
+      instance.globe.pointOfView(
+        { ...instance.globe.pointOfView(), altitude: DEFAULT_ALTITUDE },
+        600
+      );
+    }
+    revealShownRef.current = Boolean(target);
+  }, [quizState, countryData]);
 
   // ----------------------------------------------------------------
   // Tải thông tin chi tiết từ API
@@ -825,8 +884,9 @@ function WorldGlobe({ onProgress, onLoaded, theme, onToggleTheme, onHome }) {
 
   // Co giãn vùng vẽ khi mở/đóng thẻ thông tin
   useEffect(() => {
+    highlightRef.current.educationDocked = educationDocked;
     globeInstanceRef.current?.fitGlobe();
-  }, [selectedId, countryData]);
+  }, [selectedId, countryData, educationDocked]);
 
   // Nhãn khi rê chuột theo ngôn ngữ hiện tại
   useEffect(() => {
@@ -866,8 +926,8 @@ function WorldGlobe({ onProgress, onLoaded, theme, onToggleTheme, onHome }) {
 
       {/* Country Card */}
       <CountryCard
-        key={selectedCountry?.id || "none"}
-        country={selectedCountry}
+        key={educationDocked ? "none" : selectedCountry?.id || "none"}
+        country={educationDocked ? null : selectedCountry}
         details={currentDetails}
         loading={loadingDetails}
         neighbors={neighbors}
@@ -921,6 +981,8 @@ function WorldGlobe({ onProgress, onLoaded, theme, onToggleTheme, onHome }) {
           onClose={closeEducation}
           onSelectCountry={selectCountry}
           onGlobeAnswer={setEducationAnswerHandler}
+          onDockChange={handleEducationDock}
+          onQuizStateChange={setQuizState}
         />
       )}
     </div>

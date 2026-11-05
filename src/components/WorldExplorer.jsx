@@ -84,7 +84,7 @@ function getLocalMetric(country, metric) {
   return null;
 }
 
-function Clock({ city, lang, now }) {
+function Clock({ city, lang, place, now }) {
   if (!city.properties.timezone) return null;
   let time;
   try {
@@ -99,7 +99,7 @@ function Clock({ city, lang, now }) {
   }
   return (
     <span className="explorer-clock">
-      <strong>{city.properties.name}</strong>
+      <strong>{place(city.properties.name)}</strong>
       <time dateTime={new Date(now).toISOString()}>{time}</time>
     </span>
   );
@@ -178,13 +178,15 @@ function WorldExplorer({ countries, isOpen, onToggleOpen, onChange }) {
     if (!selectedMetric) return output;
     const bankValues = worldBank[settings.metric]?.values;
     for (const country of countries) {
+      // Khi lọc theo nhóm, thang màu và chú giải chỉ tính trên các nước trong nhóm.
+      if (settings.group !== "none" && !groupCountryIds.has(country.id)) continue;
       const value = selectedMetric.local
         ? getLocalMetric(country, settings.metric)
         : bankValues?.get(country.iso3);
       if (value && Number.isFinite(value.value)) output.set(country.iso3, value);
     }
     return output;
-  }, [countries, selectedMetric, settings.metric, worldBank]);
+  }, [countries, selectedMetric, settings.metric, settings.group, groupCountryIds, worldBank]);
 
   const metricColors = useMemo(() => {
     const values = [...valuesByIso3.values()].map(({ value }) => value);
@@ -413,7 +415,7 @@ function WorldExplorer({ countries, isOpen, onToggleOpen, onChange }) {
           <div className="explorer-clocks">
             <h3>{t("explorer.worldClocks")}</h3>
             {clockCities.map((city) => (
-              <Clock key={city.properties.iso2} city={city} lang={lang} now={now} />
+              <Clock key={city.properties.iso2} city={city} lang={lang} place={place} now={now} />
             ))}
           </div>
         )}
@@ -443,7 +445,7 @@ function WorldExplorer({ countries, isOpen, onToggleOpen, onChange }) {
           {route && (
             <p className="explorer-distance-value">
               {formatMetric(route.distanceKm, lang === "vi" ? "vi-VN" : "en-US")} km
-              <small>{t("explorer.distanceNote", { from: route.start.name, to: route.end.name })}</small>
+              <small>{t("explorer.distanceNote", { from: place(route.start.name), to: place(route.end.name) })}</small>
             </p>
           )}
         </div>

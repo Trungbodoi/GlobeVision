@@ -1,4 +1,5 @@
 import { reviewCard } from "./srs.js";
+import { getLocalDateKey, getPreviousLocalDateKey } from "./dateKey.js";
 
 const STORAGE_KEY = "globevision.learningProgress";
 const VERSION = 1;
@@ -43,8 +44,8 @@ export function saveProgress(progress) {
 
 export function recordAnswer(progress, countryId, correct, now = Date.now()) {
   const next = structuredClone(progress);
-  const today = new Date(now).toISOString().slice(0, 10);
-  const yesterday = new Date(now - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const today = getLocalDateKey(new Date(now));
+  const yesterday = getPreviousLocalDateKey(new Date(now));
   const previousDate = next.stats.lastStudyDate;
 
   next.stats.totalAnswered += 1;
